@@ -1,0 +1,871 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "name": "Admin Sanggar",
+      "email": "admin@asmorobangun.id",
+      "password": "$2a$10$U1Q1AHxcLUjcHtwBBkYy4.vR9vRe6MRsNiGB95yez9Zqj6A9XXbA2",
+      "role": "admin",
+      "phone": "081234567890",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "phoneVerified": false,
+      "verifiedPhone": null
+    },
+    {
+      "id": "u-1jjZufHd",
+      "name": "difa octavia",
+      "email": "difaoctaviafirdayani@gmail.com",
+      "phone": "082231313237",
+      "password": "$2a$10$hPmexM9Bl5Tl5HV.zEfzu.lN8Zs0Zm0wus.rfsAI4vGRkFIiFK.Lm",
+      "role": "member",
+      "createdAt": "2026-09-25T06:28:23.657Z",
+      "phoneVerified": false,
+      "verifiedPhone": null
+    },
+    {
+      "id": "u-klcxsyDX",
+      "name": "dipaa",
+      "email": "difaoctavia26@gmail.com",
+      "phone": "082231313237",
+      "password": "$2a$10$bJvMtpPSsFgY6wmDhv96pOl8H1TMwfOxfxWj8NwX0FUSL9beHAi8a",
+      "role": "member",
+      "createdAt": "2026-09-29T09:07:39.392Z"
+    }
+  ],
+  "facilities": [
+    {
+      "id": "panggilan-tari",
+      "name": "Panggilan Tari (Pertunjukan Seni)",
+      "category": "Pertunjukan",
+      "shortDesc": "Undang penari & pemain topeng Malangan untuk memeriahkan hajatan, pernikahan, festival, atau acara instansi Anda.",
+      "longDesc": "Sanggar Asmorobangun menerima panggilan pentas Wayang Topeng Malangan dan tari tradisional untuk berbagai acara: pernikahan, khitanan, festival budaya, penyambutan tamu instansi, hingga acara sekolah. Tim penari, pemusik karawitan, dan perlengkapan (topeng, kostum, gamelan) dapat dibawa langsung ke lokasi acara Anda. Setiap permintaan akan ditinjau tim kami untuk menyesuaikan jumlah penari, durasi pentas, dan cerita/lakon yang dibawakan sesuai kebutuhan acara.",
+      "image": "panggilan-tari.jpg",
+      "priceInfo": "Menyesuaikan jarak lokasi, jumlah penari & durasi pentas. Ajukan permintaan untuk mendapat penawaran harga.",
+      "bookingType": "event",
+      "requiresLogin": true
+    },
+    {
+      "id": "kunjungan-edukasi",
+      "name": "Kunjungan Edukasi Budaya",
+      "category": "Edukasi",
+      "shortDesc": "Program kunjungan untuk sekolah, kampus, atau komunitas untuk belajar langsung sejarah Topeng Malangan.",
+      "longDesc": "Program ini dirancang untuk kelompok pelajar, mahasiswa, maupun wisatawan yang ingin mengenal lebih dekat sejarah dan filosofi Topeng Malangan. Peserta akan diajak berkeliling padepokan, melihat proses pembuatan topeng, menyaksikan latihan tari, serta mendapat penjelasan langsung dari pengrajin dan penari senior sanggar. Cocok untuk study tour, KKN, maupun kunjungan riset budaya.",
+      "image": "kunjungan-edukasi.jpg",
+      "priceInfo": "Rp 10.000/orang (min. 10 peserta), sudah termasuk pemandu & dokumentasi.",
+      "bookingType": "event",
+      "requiresLogin": true
+    },
+    {
+      "id": "les-tari-wisata",
+      "name": "Kelas Tari Wisata (Sekali Datang)",
+      "category": "Kelas Tari",
+      "shortDesc": "Coba belajar gerakan dasar Tari Topeng Malangan cukup satu kali datang — cocok untuk wisatawan.",
+      "longDesc": "Kelas ini ditujukan bagi wisatawan atau siapa pun yang penasaran mencoba gerak dasar Tari Topeng Malangan tanpa perlu komitmen jangka panjang. Dalam satu sesi (±90 menit) Anda akan didampingi instruktur untuk mengenal filosofi topeng yang dipakai, gerakan dasar, serta sesi foto memakai kostum. Tidak perlu pengalaman menari sebelumnya.",
+      "image": "kelas-tari.jpg",
+      "priceInfo": "Rp 15.000 / sekali datang",
+      "price": 15000,
+      "bookingType": "wisata",
+      "requiresLogin": true
+    },
+    {
+      "id": "les-tari-reguler",
+      "name": "Les Tari Reguler (Pendaftaran Menetap)",
+      "category": "Kelas Tari",
+      "shortDesc": "Belajar tari topeng Malangan secara rutin & berjenjang bersama pelatih sanggar.",
+      "longDesc": "Program pendaftaran menetap untuk anak-anak, remaja, hingga dewasa yang ingin serius mendalami Tari Topeng Malangan. Latihan dilakukan rutin setiap minggu mengikuti jadwal kelas yang tersedia, dengan kurikulum berjenjang dari gerak dasar hingga tokoh-tokoh dalam lakon Panji. Peserta akan tampil dalam pentas Gebyak Senen Legian setelah dianggap siap oleh pelatih.",
+      "image": "kelas-tari.jpg",
+      "priceInfo": "Biaya pendaftaran & SPP bulanan — hubungi admin untuk rincian sesuai kelompok usia.",
+      "bookingType": "reguler",
+      "requiresLogin": true
+    },
+    {
+      "id": "les-karawitan",
+      "name": "Les Karawitan",
+      "category": "Karawitan",
+      "shortDesc": "Belajar menabuh gamelan Jawa langsung dari para nayaga sanggar, dari dasar hingga mengiringi pentas.",
+      "longDesc": "Karawitan adalah jantung dari setiap pertunjukan Wayang Topeng Malangan — tanpa gendhing yang tepat, tarian kehilangan jiwanya. Di kelas ini peserta akan diajak mengenal instrumen gamelan satu per satu (kendhang, saron, bonang, gong, dan lainnya), memahami notasi dasar, hingga berlatih mengiringi tarian secara langsung. Kelas terbuka untuk segala usia, tanpa perlu bisa membaca notasi musik sebelumnya. Tidak ada biaya kelas yang dipatok secara kaku — silakan hubungi kami untuk mendiskusikan komitmen belajar Anda.",
+      "image": "karawitan.jpg",
+      "priceInfo": "Hubungi kami untuk info pendaftaran & jadwal — kelas karawitan masih gratis untuk saat ini.",
+      "bookingType": "reguler",
+      "requiresLogin": true
+    },
+    {
+      "id": "sewa-kostum",
+      "name": "Sewa Kostum",
+      "category": "Sewa",
+      "shortDesc": "Sewa kostum tari topeng Malangan lengkap untuk pentas, dokumentasi, atau acara budaya.",
+      "longDesc": "Sanggar menyediakan sewa kostum tari topeng Malangan lengkap beserta topengnya untuk kebutuhan pentas sekolah, dokumentasi foto/video, maupun acara budaya lainnya. Kostum tersedia dalam beberapa ukuran dan karakter tokoh. Penyewa disarankan memesan minimal H-3 sebelum tanggal penggunaan.",
+      "image": "sewa-kostum.jpg",
+      "priceInfo": "Mulai Rp 75.000/set/hari, tergantung kelengkapan & karakter kostum.",
+      "bookingType": "rental",
+      "requiresLogin": true
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rv-1",
+      "facilityId": "les-tari-wisata",
+      "userName": "Haechan",
+      "rating": 5,
+      "comment": "Seru banget! Instrukturnya sabar jelasin filosofi tiap topeng, worth it buat sekali datang.",
+      "date": "2026-02-06T10:00:00.000Z"
+    },
+    {
+      "id": "rv-2",
+      "facilityId": "panggilan-tari",
+      "userName": "Aera",
+      "rating": 5,
+      "comment": "Dipanggil buat pentas pernikahan, tamu-tamu suka banget sama pertunjukannya. Recommended!",
+      "date": "2026-02-12T10:00:00.000Z"
+    },
+    {
+      "id": "rv-3",
+      "facilityId": "kunjungan-edukasi",
+      "userName": "Oza",
+      "rating": 4,
+      "comment": "Bagus buat study tour anak sekolah, pemandunya informatif.",
+      "date": "2026-02-18T10:00:00.000Z"
+    }
+  ],
+  "bookings": [
+    {
+      "id": "bk-wvg9VG8v",
+      "facilityId": "les-tari-reguler",
+      "facilityName": "Les Tari Reguler (Pendaftaran Menetap)",
+      "bookingType": "reguler",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "userEmail": "difaoctaviafirdayani@gmail.com",
+      "date": "sabtu",
+      "notes": "17 tahun",
+      "eventType": null,
+      "location": null,
+      "guestCount": null,
+      "paymentMethod": null,
+      "amount": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T08:49:58.102Z"
+    },
+    {
+      "id": "bk-04GRvIR_",
+      "facilityId": "les-tari-reguler",
+      "facilityName": "Les Tari Reguler (Pendaftaran Menetap)",
+      "bookingType": "reguler",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "userEmail": "difaoctaviafirdayani@gmail.com",
+      "date": "sabtu",
+      "notes": "17 tahun",
+      "eventType": null,
+      "location": null,
+      "guestCount": null,
+      "paymentMethod": null,
+      "amount": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T08:54:52.583Z"
+    },
+    {
+      "id": "bk-B_WCvr9n",
+      "facilityId": "les-tari-reguler",
+      "facilityName": "Les Tari Reguler (Pendaftaran Menetap)",
+      "bookingType": "reguler",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "userEmail": "difaoctaviafirdayani@gmail.com",
+      "date": "sabtu",
+      "notes": "ggg",
+      "eventType": null,
+      "location": null,
+      "guestCount": null,
+      "paymentMethod": null,
+      "amount": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T08:55:33.689Z"
+    },
+    {
+      "id": "bk-l5Pe9iCC",
+      "facilityId": "sewa-kostum",
+      "facilityName": "Sewa Kostum",
+      "bookingType": "rental",
+      "userId": "u-klcxsyDX",
+      "userName": "dipaa",
+      "userEmail": "difaoctavia26@gmail.com",
+      "date": "2026-10-12",
+      "notes": "kostum toppeng",
+      "eventType": null,
+      "location": null,
+      "guestCount": null,
+      "paymentMethod": "qris",
+      "amount": null,
+      "proofFile": null,
+      "status": "menunggu_pembayaran",
+      "createdAt": "2026-09-29T09:21:47.986Z"
+    }
+  ],
+  "eventRequests": [],
+  "topeng": [
+    {
+      "id": "tp-panji",
+      "name": "Topeng Panji",
+      "character": "Tokoh utama, watak lembut & bijaksana",
+      "color": "Putih",
+      "price": 350000,
+      "stock": 5,
+      "image": "topeng-panji.jpg",
+      "desc": "Topeng Panji melambangkan sosok ksatria yang tenang, bijaksana, dan berbudi luhur. Cocok untuk koleksi maupun properti pentas."
+    },
+    {
+      "id": "tp-klana",
+      "name": "Topeng Klana Sewandana",
+      "character": "Tokoh antagonis, watak angkara murka",
+      "color": "Merah",
+      "price": 400000,
+      "stock": 4,
+      "image": "topeng-klana.jpg",
+      "desc": "Warna merah menyala pada topeng Klana melambangkan watak keras, penuh amarah, dan nafsu. Salah satu topeng paling ikonik dari lakon Panji."
+    },
+    {
+      "id": "tp-bapang",
+      "name": "Topeng Bapang",
+      "character": "Patih gagah berwibawa",
+      "color": "Merah tua",
+      "price": 375000,
+      "stock": 3,
+      "image": "topeng-bapang.jpg",
+      "desc": "Menggambarkan sosok patih yang gagah dan berwibawa, dengan kumis tebal serta ekspresi tegas khas abdi kerajaan."
+    },
+    {
+      "id": "tp-gunungsari",
+      "name": "Topeng Gunungsari",
+      "character": "Ksatria muda tampan",
+      "color": "Hijau muda",
+      "price": 350000,
+      "stock": 6,
+      "image": "topeng-gunungsari.jpg",
+      "desc": "Topeng Gunungsari menggambarkan sosok pangeran muda yang tampan, halus, dan penuh kasih sayang."
+    },
+    {
+      "id": "tp-dewi-sekartaji",
+      "name": "Topeng Dewi Sekartaji",
+      "character": "Putri anggun",
+      "color": "Kuning keemasan",
+      "price": 375000,
+      "stock": 4,
+      "image": "topeng-sekartaji.jpg",
+      "desc": "Topeng tokoh putri dengan raut wajah anggun dan halus, melambangkan kelembutan serta kesetiaan."
+    }
+  ],
+  "topengOrders": [
+    {
+      "id": "ord-gcARdseV",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-26T14:34:30.061Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-26T14:34:30.061Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-N7rkI9HU",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-26T14:44:34.199Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-26T14:44:34.199Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-7Yc6oksA",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-28T12:21:59.682Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-28T12:21:59.683Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-9GfXmJhl",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-28T18:56:52.476Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-28T18:56:52.476Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-msndR28B",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-28T19:04:22.275Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-28T19:04:22.275Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-s5HrrJuM",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T04:03:24.132Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T04:03:24.132Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-lIaVvSSq",
+      "topengId": "tp-dewi-sekartaji",
+      "topengName": "Topeng Dewi Sekartaji",
+      "topengImage": "topeng-sekartaji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 375000,
+      "total": 375000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T04:05:16.544Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Dewi Sekartaji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T04:05:16.544Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-g4d-h8FN",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T04:16:16.884Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T04:16:16.884Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-6YuorrAS",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T04:33:48.196Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T04:33:48.196Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-s5oLruIc",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": "cash",
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-29T08:32:22.893Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T08:32:22.893Z"
+        },
+        {
+          "from": "system",
+          "text": "Pembeli memilih pembayaran tunai (bayar langsung di sanggar).",
+          "date": "2026-09-29T08:44:33.859Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-loMenFZS",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": "350000",
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": "qris",
+      "proofFile": "/uploads/payment_proof/1790671529344-Kmv2WkXb.png",
+      "status": "menunggu_verifikasi",
+      "createdAt": "2026-09-29T08:45:12.385Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-29T08:45:12.385Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-L_SM2C47",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 350000,
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-30T20:22:05.412Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-30T20:22:05.412Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-KqbX3YSL",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 350000,
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-30T20:22:05.552Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-30T20:22:05.552Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-0AJkDfxP",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 350000,
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-30T20:22:05.563Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-30T20:22:05.564Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-l-y17__p",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 350000,
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-30T20:30:23.978Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-30T20:30:23.978Z"
+        }
+      ]
+    },
+    {
+      "id": "ord-L440oURn",
+      "topengId": "tp-panji",
+      "topengName": "Topeng Panji",
+      "topengImage": "topeng-panji.jpg",
+      "userId": "u-1jjZufHd",
+      "userName": "difa octavia",
+      "buyerPhone": "082231313237",
+      "qty": 1,
+      "unitPrice": 350000,
+      "total": 350000,
+      "customName": null,
+      "customDesign": null,
+      "message": "",
+      "paymentMethod": null,
+      "proofFile": null,
+      "status": "menunggu_konfirmasi_admin",
+      "createdAt": "2026-09-30T20:31:02.895Z",
+      "chatLog": [
+        {
+          "from": "system",
+          "text": "Pesanan dibuat untuk Topeng Panji x1. Admin sanggar akan segera merespons di sini.",
+          "date": "2026-09-30T20:31:02.895Z"
+        }
+      ]
+    }
+  ],
+  "articles": [
+    {
+      "id": "art-1",
+      "slug": "sejarah-sanggar-asmorobangun",
+      "title": "Menelusuri Sejarah Sanggar Asmorobangun, Rumah Wayang Topeng Malangan",
+      "excerpt": "Berdiri sejak akhir 1970-an di Dusun Kedungmonggo, Pakisaji, sanggar ini menjadi salah satu penjaga terakhir tradisi Wayang Topeng Malangan.",
+      "content": "Sanggar Asmorobangun terletak di Dusun Kedungmonggo, Desa Karangpandan, Kecamatan Pakisaji, Kabupaten Malang. Keberadaannya tidak lepas dari dukungan Bupati Malang saat itu, Eddy Slamet, yang pada rentang 1976-1985 mendorong pelestarian teater Wayang Topeng Malang agar tidak punah ditelan zaman.\n\nSosok sentral di balik sanggar ini adalah Mbah Karimun, maestro tari topeng Malangan yang bahkan pernah menerima penghargaan langsung dari Presiden Soeharto atas jasanya melestarikan kesenian tradisional. Sepeninggal beliau, sanggar diteruskan secara turun-temurun hingga kini dikelola oleh cucunya, Tri Handoyo.\n\nHingga sekarang, Sanggar Asmorobangun masih rutin menggelar pertunjukan setiap Senin Legi (dikenal dengan sebutan Gebyak Senen Legian) sesuai penanggalan Jawa, sekaligus menjadi tempat berlatih bagi generasi muda yang ingin mendalami tari dan pembuatan topeng.",
+      "image": "artikel-sejarah.jpg",
+      "category": "Sejarah",
+      "author": "Redaksi Asmorobangun",
+      "date": "2026-01-05T08:00:00.000Z",
+      "featured": true
+    },
+    {
+      "id": "art-2",
+      "slug": "makna-warna-topeng-malangan",
+      "title": "Bukan Sekadar Warna: Filosofi di Balik Setiap Topeng Malangan",
+      "excerpt": "Setiap warna dan bentuk pada topeng Malangan menyimpan makna watak manusia — dari kelembutan hingga amarah.",
+      "content": "Topeng Malangan bukan sekadar penutup wajah dari kayu. Menurut kajian estetika yang pernah dilakukan di Sanggar Asmorobangun, setidaknya ada 15 elemen yang membentuk sebuah topeng: mata, alis, hidung, bibir, kumis, jenggot, jambang, rambut, urna, hiasan, jamang, cula, sumping, isen-isen, hingga warna.\n\nWarna menjadi penanda watak yang paling mudah dikenali. Tokoh yang keras dan berangasan biasanya digambarkan dengan warna merah menyala, seperti pada Klana Sewandana. Watak angkuh kerap divisualisasikan dengan warna putih, sementara tokoh bijaksana dan berbudi digambarkan dengan warna-warna lembut.\n\nPerpaduan elemen-elemen ini menjadikan setiap topeng sebagai representasi pertarungan antara kebaikan dan keburukan, sebagaimana lazim diceritakan dalam kisah pewayangan cerita Panji.",
+      "image": "artikel-warna.jpg",
+      "category": "Budaya",
+      "author": "Redaksi Asmorobangun",
+      "date": "2026-01-20T08:00:00.000Z",
+      "featured": false
+    },
+    {
+      "id": "art-3",
+      "slug": "gebyak-senen-legian",
+      "title": "Gebyak Senen Legian: Ritual Pentas yang Tak Pernah Putus",
+      "excerpt": "Setiap Senin Legi menurut kalender Jawa, panggung sanggar kembali hidup oleh iringan gamelan dan gerak tari topeng.",
+      "content": "Salah satu tradisi yang paling ditunggu di Sanggar Asmorobangun adalah pementasan rutin yang digelar setiap Senin Legi, dikenal dengan istilah Gebyak Senen Legian. Pertunjukan ini telah berlangsung turun-temurun dan menjadi wadah bagi para penari serta pengrajin topeng untuk unjuk kemampuan sekaligus menjaga kesinambungan tradisi.\n\nPenonton yang datang tidak hanya berasal dari warga sekitar Kedungmonggo, tetapi juga wisatawan domestik dan mancanegara yang penasaran dengan kesenian Jawa Timur ini. Pertunjukan biasanya membawakan penggalan kisah Panji, lengkap dengan iringan karawitan langsung dari para nayaga sanggar.\n\nBagi yang ingin menyaksikan langsung, jadwal Gebyak Senen Legian dapat dicek melalui pengumuman terbaru di website ini atau menghubungi admin sanggar.",
+      "image": "artikel-gebyak.jpg",
+      "category": "Acara",
+      "author": "Redaksi Asmorobangun",
+      "date": "2026-02-02T08:00:00.000Z",
+      "featured": false
+    },
+    {
+      "id": "art-4",
+      "slug": "regenerasi-pengrajin-topeng",
+      "title": "Tantangan Regenerasi: Menjaga Tangan-Tangan Pengukir Topeng Malangan",
+      "excerpt": "Di balik lestarinya tari topeng, sanggar menghadapi tantangan mencari generasi muda yang mau menekuni proses pengukiran topeng.",
+      "content": "Jika untuk urusan menari generasi muda di Sanggar Asmorobangun terbilang cukup banyak, lain halnya dengan proses pembuatan atau pengukiran topeng. Sebagian besar pengrajin topeng yang aktif saat ini merupakan generasi yang telah berusia lanjut, sementara minat anak muda untuk menekuni kriya ukir topeng masih tergolong rendah dibanding menari.\n\nPadahal, proses pembuatan topeng Malangan sarat akan makna dan bahkan diiringi ritual tersendiri di beberapa tahapannya, sebagai bentuk penghormatan terhadap bahan baku kayu yang digunakan.\n\nSanggar Asmorobangun terus membuka pintu bagi siapa pun yang tertarik belajar mengukir, sebagai bagian dari upaya menjaga agar keterampilan ini tidak punah bersama generasi tuanya.",
+      "image": "artikel-pengrajin.jpg",
+      "category": "Budaya",
+      "author": "Redaksi Asmorobangun",
+      "date": "2026-02-15T08:00:00.000Z",
+      "featured": false
+    }
+  ],
+  "announcements": [
+    {
+      "id": "an-1",
+      "title": "Pendaftaran Dibuka!",
+      "body": "Kelas tari dan karawitan periode Maret 2026 sudah dibuka. Daftar sebelum kuota penuh.",
+      "type": "Pendaftaran dibuka",
+      "color": "green",
+      "date": "2026-01-20T00:00:00.000Z"
+    },
+    {
+      "id": "an-2",
+      "title": "Pentas Minggu Kliwon",
+      "body": "Pentas Minggu Kliwon bulan ini digelar terbuka untuk umum, jangan lewatkan!",
+      "type": "Info Pertunjukan",
+      "color": "brown",
+      "date": "2026-01-15T00:00:00.000Z"
+    },
+    {
+      "id": "an-3",
+      "title": "Terpilih Duta Budaya",
+      "body": "Sanggar Asmorobangun terpilih sebagai duta budaya Jawa Timur untuk Festival Jakarta 1932-nya kembali diperingati tahun ini.",
+      "type": "Pencapaian",
+      "color": "green",
+      "date": "2026-01-10T00:00:00.000Z"
+    }
+  ],
+  "gallery": [
+    {
+      "id": "gal-1",
+      "title": "Pagelaran Wayang Topeng \"Ngrenggong\" Bapak Wawan/dkk",
+      "caption": "Tayangan berita Padepokan Asmorobangun \"Ngrenggong\" Wayang Topeng di Desa Wonorejo II",
+      "image": "gallery-1.jpg",
+      "date": "2026-01-10T00:00:00.000Z"
+    },
+    {
+      "id": "gal-2",
+      "title": "Latihan Tari",
+      "caption": "Sesi latihan rutin bersama pelatih sanggar",
+      "image": "gallery-2.jpg",
+      "date": "2026-01-18T00:00:00.000Z"
+    },
+    {
+      "id": "gal-3",
+      "title": "Gebyak Senen Legian",
+      "caption": "Pementasan rutin setiap Senin Legi di padepokan",
+      "image": "/uploads/site_images/1790622444072-Q5wyjPHQ.jpg",
+      "date": "2026-02-02T00:00:00.000Z"
+    }
+  ],
+  "cultureInfo": {
+    "timeline": [
+      {
+        "id": "tl-1",
+        "year": "1970-an",
+        "text": "Sanggar-sanggar Topeng Malangan di Kabupaten Malang mencapai masa kejayaan karena tingginya permintaan pentas dari desa ke desa."
+      },
+      {
+        "id": "tl-2",
+        "year": "1976-1985",
+        "text": "Bupati Malang Eddy Slamet mendorong pelestarian teater Wayang Topeng Malang, mendukung berdirinya Sanggar Asmorobangun di Kedungmonggo, Pakisaji."
+      },
+      {
+        "id": "tl-3",
+        "year": "Era Mbah Karimun",
+        "text": "Mbah Karimun, sesepuh & maestro topeng Malangan, menerima penghargaan dari Presiden Soeharto atas jasanya melestarikan kesenian tradisional."
+      },
+      {
+        "id": "tl-4",
+        "year": "2010-sekarang",
+        "text": "Sanggar diteruskan oleh cucu Mbah Karimun, Tri Handoyo, dan tetap rutin menggelar pentas Gebyak Senen Legian setiap bulan menurut kalender Jawa."
+      }
+    ],
+    "paragraph": "Hingga saat ini, Sanggar Asmorobangun di Dusun Kedungmonggo, Desa Karangpandan, Kecamatan Pakisaji, Kabupaten Malang masih aktif menjaga tradisi Wayang Topeng Malangan lewat latihan tari, pembuatan topeng, dan pementasan rutin. Sanggar ini menjadi ruang belajar budaya lokal bagi generasi muda, warga sekitar, wisatawan domestik, hingga peminat dari luar negeri.",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "faqs": [
+    {
+      "id": "faq-1",
+      "question": "Apakah kelas tari berbayar?",
+      "answer": "Untuk kelas tari wisata dikenakan biaya Rp 15.000 setiap pertemuan. Sedangkan kelas karawitan masih gratis untuk saat ini."
+    },
+    {
+      "id": "faq-2",
+      "question": "Apakah harus punya pengalaman sebelumnya untuk ikut kelas?",
+      "answer": "Tidak. Setiap calon peserta akan mengikuti progres kelas yang sudah berjalan sesuai kelompok yang dipilih."
+    },
+    {
+      "id": "faq-3",
+      "question": "Bagaimana saya tahu pendaftaran saya berhasil?",
+      "answer": "Konfirmasi pendaftaran berhasil akan dikirimkan melalui akun email yang dimasukkan ketika melakukan pendaftaran."
+    }
+  ],
+  "forumThreads": [
+    {
+      "id": "th-1",
+      "category": "Diskusi Umum",
+      "title": "Rekomendasi rute ke Sanggar Asmorobangun dari kota Malang?",
+      "userName": "Wisatawan_Budi",
+      "content": "Halo, ada yang tahu rute paling gampang dari alun-alun Kota Malang ke sanggar? Naik motor kira-kira berapa lama ya?",
+      "date": "2026-02-01T09:00:00.000Z",
+      "replies": [
+        {
+          "id": "r-1",
+          "userName": "Admin Sanggar",
+          "content": "Halo kak, dari alun-alun Malang sekitar 30-40 menit berkendara ke arah Pakisaji, Dusun Kedungmonggo. Lokasi lengkap ada di menu Lokasi ya!",
+          "date": "2026-02-01T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "th-2",
+      "category": "Kelas Tari",
+      "title": "Kelas tari untuk usia dewasa ada nggak?",
+      "userName": "Sari_M",
+      "content": "Saya usia 27 tahun, masih bisa daftar les tari reguler nggak ya? Atau khusus anak-anak saja?",
+      "date": "2026-02-10T09:00:00.000Z",
+      "replies": []
+    },
+    {
+      "id": "th-886BPre6",
+      "category": "Kelas Tari",
+      "title": "kelas tari",
+      "userName": "difa octavia",
+      "userId": "u-1jjZufHd",
+      "content": "bisa untuk umur berapa aja",
+      "date": "2026-09-25T06:31:27.043Z",
+      "replies": []
+    }
+  ],
+  "paymentSettings": {
+    "bankName": "Bank Rakyat Indonesia (BRI)",
+    "accountNumber": "0192-01-000123-50-7",
+    "accountName": "Sanggar Asmorobangun (Tri Handoyo)",
+    "qrisMerchantName": "SANGGAR ASMOROBANGUN",
+    "whatsapp": "6281234567890",
+    "qrisImage": ""
+  }
+}

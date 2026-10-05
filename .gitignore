@@ -1,0 +1,7 @@
+node_modules/
+.env
+uploads/site_images/*
+uploads/payment_proof/*
+uploads/chat_attachment/*
+!uploads/**/.gitkeep
+uploads/avatars/*
