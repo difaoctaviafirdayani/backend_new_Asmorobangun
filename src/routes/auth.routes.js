@@ -42,13 +42,13 @@ function removeOldAvatar(avatarUrl) {
 // Kebijakan password: hanya huruf (A-Z, a-z) dan angka (0-9), tanpa spasi,
 // titik, koma, strip, atau simbol/karakter aneh lainnya. Panjang 6-64 karakter.
 const PASSWORD_REGEX = /^[A-Za-z0-9]{6,64}$/;
+const PASSWORD_MSG =
+  "Password hanya boleh berisi huruf dan angka (tanpa spasi, titik, koma, strip, atau simbol lain).";
 function passwordError(password) {
   if (typeof password !== "string" || !password) return "Password wajib diisi.";
   if (password.length < 6) return "Password minimal 6 karakter.";
   if (password.length > 64) return "Password maksimal 64 karakter.";
-  if (!PASSWORD_REGEX.test(password)) {
-    return "Password hanya boleh berisi huruf dan angka (tanpa spasi, titik, koma, strip, atau simbol lain).";
-  }
+  if (!PASSWORD_REGEX.test(password)) return PASSWORD_MSG;
   return null;
 }
 
@@ -100,6 +100,11 @@ router.post("/login", async (req, res) => {
   const db = readDB();
   const user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
   if (!user) return res.status(401).json({ error: "Email atau password salah." });
+  // Kebijakan: akun pengguna tidak bisa login bila password berisi karakter selain huruf/angka.
+  // (Akun admin dikecualikan supaya admin lama tidak terkunci.)
+  if (user.role !== "admin" && !/^[A-Za-z0-9]+$/.test(password)) {
+    return res.status(400).json({ error: PASSWORD_MSG });
+  }
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(401).json({ error: "Email atau password salah." });
   const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, JWT_SECRET, {
@@ -108,6 +113,34 @@ router.post("/login", async (req, res) => {
   res.json({ token, user: publicUser(user) });
 });
 
+// POST /api/auth/reset-password  (lupa password: verifikasi email + nomor HP terdaftar)
+function normalizePhone(v) {
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.startsWith("62")) d = "0" + d.slice(2);
+  return d;
+}
+router.post("/reset-password", async (req, res) => {
+  const { email, phone, newPassword } = req.body;
+  if (!email || !phone || !newPassword) {
+    return res.status(400).json({ error: "Email, nomor HP, dan password baru wajib diisi." });
+  }
+  const pwErr = passwordError(newPassword);
+  if (pwErr) return res.status(400).json({ error: pwErr });
+
+  const GENERIC = "Email atau nomor HP tidak cocok dengan data akun.";
+  const db = readDB();
+  const user = db.users.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+  const savedPhone = user ? normalizePhone(user.phone) : "";
+  if (!user || user.role === "admin" || !savedPhone || savedPhone !== normalizePhone(phone)) {
+    return res.status(400).json({ error: GENERIC });
+  }
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await update((data) => {
+    const u = data.users.find((x) => x.id === user.id);
+    if (u) u.password = hashed;
+  });
+  res.json({ message: "Password berhasil diganti. Silakan login dengan password baru." });
+});
 // GET /api/auth/me
 router.get("/me", requireAuth, (req, res) => {
   const db = readDB();
