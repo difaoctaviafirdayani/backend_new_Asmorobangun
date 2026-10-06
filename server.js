@@ -27,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files (payment proofs, site images from the admin media library, etc.)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/app/assets", express.static(path.join(__dirname, "public", "assets")));
 
 // Server ini murni JSON API. Frontend user & admin dijalankan terpisah (lihat zip masing-masing).
 
