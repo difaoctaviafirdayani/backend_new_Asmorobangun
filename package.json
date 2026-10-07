@@ -1,12 +1,13 @@
 {
   "name": "asmorobangun-backend",
-  "version": "2.0.0",
-  "description": "Backend API for Sanggar Asmorobangun website (Express + JSON file storage)",
+  "version": "3.0.0",
+  "description": "Backend API Sanggar Asmorobangun (Express + penyimpanan JSON) — terstruktur per kelompok modul",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node --watch server.js",
+    "fix:users": "node scripts/fix-duplicate-users.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

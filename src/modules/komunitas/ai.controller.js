@@ -1,7 +1,6 @@
-const express = require("express");
-const { readDB } = require("../db");
-
-const router = express.Router();
+const { readDB } = require("../../database/db");
+const { httpError } = require("../../middleware/error");
+const { AI_API_KEY, AI_BASE_URL, AI_MODEL } = require("../../config/env");
 
 // This assistant is intentionally scoped to ONE topic only: Topeng Malangan
 // (the carved masks) — their history, characters/watak, materials, carving
@@ -41,7 +40,7 @@ function ruleBasedAnswer(message) {
   if (OFF_TOPIC.test(m)) {
     return "Asisten ini khusus membahas Topeng Malangan ya 🎭 — untuk kelas tari, karawitan, sewa kostum, atau booking pentas, silakan cek menu Fasilitas atau Forum Diskusi di aplikasi.";
   }
-  if (/(halo|hai|hi|pagi|siang|sore|malam)/.test(m) && m.length < 20) {
+  if (/\b(halo|hai|hi|pagi|siang|sore|malam)\b/.test(m) && m.length < 20) {
     return "Halo! Aku Asisten Topeng 🎭 — siap bantu jawab apapun soal Topeng Malangan: sejarah, tokoh, bahan, cara merawat, sampai katalog topeng yang dijual di sini. Mau tanya apa?";
   }
   if (/(beli|pesan|pesen|order|harga|katalog)/.test(m)) {
@@ -68,33 +67,30 @@ function ruleBasedAnswer(message) {
   return "Aku bisa bantu jawab apapun soal Topeng Malangan — sejarah, tokoh & wataknya, bahan & proses pembuatan, cara merawat, sampai katalog yang dijual di sini. Coba tanya lebih spesifik ya!";
 }
 
-router.post("/chat", async (req, res) => {
-  const { message, history } = req.body;
-  if (!message) return res.status(400).json({ error: "Pesan tidak boleh kosong." });
 
-  const db = readDB();
-  const apiKey = process.env.AI_API_KEY;
-  const baseUrl = process.env.AI_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.AI_MODEL || "gpt-4o-mini";
+// POST /api/ai/chat   body: { message, history? }
+exports.chat = async (req, res) => {
+  const message = String(req.body.message || "").trim();
+  const { history } = req.body;
+  if (!message) throw httpError(400, "Pesan tidak boleh kosong.");
+  if (message.length > 1000) throw httpError(400, "Pesan terlalu panjang (maksimal 1000 karakter).");
 
-  if (!apiKey) {
-    return res.json({ reply: ruleBasedAnswer(message), mode: "rule-based" });
-  }
+  if (!AI_API_KEY) return res.json({ reply: ruleBasedAnswer(message), mode: "rule-based" });
 
   try {
+    const safeHistory = (Array.isArray(history) ? history : [])
+      .filter((h) => h && ["user", "assistant"].includes(h.role) && typeof h.content === "string")
+      .slice(-10)
+      .map((h) => ({ role: h.role, content: h.content.slice(0, 1000) }));
     const messages = [
-      { role: "system", content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${catalogSummary(db)}` },
-      ...(Array.isArray(history) ? history : []),
+      { role: "system", content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${catalogSummary(readDB())}` },
+      ...safeHistory,
       { role: "user", content: message },
     ];
-
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model, messages, max_tokens: 500 }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${AI_API_KEY}` },
+      body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 500 }),
     });
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content?.trim();
@@ -104,6 +100,4 @@ router.post("/chat", async (req, res) => {
     console.error("AI error:", err.message);
     res.json({ reply: ruleBasedAnswer(message), mode: "rule-based-fallback" });
   }
-});
-
-module.exports = router;
+};

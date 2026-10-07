@@ -1,31 +1,47 @@
+// ===========================================================================
+// MIDDLEWARE AUTH — cek token login (JWT) dan hak akses admin.
+// ===========================================================================
 const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = require("../config/env");
+const { readDB } = require("../database/db");
 
-const JWT_SECRET = process.env.JWT_SECRET || "asmorobangun-dev-secret-change-me";
+function getToken(req) {
+  const header = req.headers.authorization || "";
+  return header.startsWith("Bearer ") ? header.slice(7) : null;
+}
+
+// Verifikasi token DAN pastikan akunnya masih ada + token belum dicabut
+// (token lama otomatis tidak berlaku setelah password diganti).
+function resolveUser(token) {
+  const payload = jwt.verify(token, JWT_SECRET);
+  const user = readDB().users.find((u) => u.id === payload.id);
+  if (!user) return null;
+  if ((payload.tv || 0) !== (user.tokenVersion || 0)) return null;
+  return { id: user.id, name: user.name, email: user.email, role: user.role };
+}
 
 function requireAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) {
-    return res.status(401).json({ error: "Kamu harus login untuk melakukan ini." });
-  }
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ error: "Kamu harus login untuk melakukan ini." });
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;
+    const user = resolveUser(token);
+    if (!user) return res.status(401).json({ error: "Sesi login sudah tidak berlaku. Silakan login ulang." });
+    req.user = user;
     next();
   } catch (err) {
     return res.status(401).json({ error: "Sesi login tidak valid atau sudah kedaluwarsa." });
   }
 }
 
-// Attaches req.user if a valid token is present, but doesn't block the request otherwise.
+// Menempelkan req.user kalau token valid, tapi tidak memblokir kalau tidak login.
 function optionalAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  const token = getToken(req);
   if (token) {
     try {
-      req.user = jwt.verify(token, JWT_SECRET);
+      const user = resolveUser(token);
+      if (user) req.user = user;
     } catch (err) {
-      // ignore invalid token, just continue unauthenticated
+      // token tidak valid -> dianggap belum login
     }
   }
   next();
@@ -38,4 +54,4 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, optionalAuth, requireAdmin, JWT_SECRET };
+module.exports = { requireAuth, optionalAuth, requireAdmin };
