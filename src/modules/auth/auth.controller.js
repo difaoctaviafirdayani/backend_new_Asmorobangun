@@ -5,7 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const { nanoid } = require("nanoid");
 
-const { readDB, update } = require("../../database/db");
+const repo = require("../../database/users.repo");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../../config/env");
 const { httpError } = require("../../middleware/error");
 const { createLimiter, tooManyMessage } = require("../../middleware/rateLimit");
@@ -99,14 +99,15 @@ exports.register = async (req, res) => {
     createdAt: new Date().toISOString(),
   };
 
-  // Cek email ganda DI DALAM antrian penulisan supaya dua pendaftaran
-  // bersamaan dengan email yang sama tidak bisa lolos dua-duanya.
-  await update((data) => {
-    if (data.users.some((u) => normalizeEmail(u.email) === email)) {
+  // Email dijaga UNIQUE oleh MySQL, jadi dua pendaftaran bersamaan tidak bisa lolos dua-duanya.
+  try {
+    await repo.createUser(user);
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
       throw httpError(409, "Email sudah terdaftar. Silakan login atau gunakan lupa password.");
     }
-    data.users.push(user);
-  });
+    throw err;
+  }
 
   res.status(201).json({ token: signToken(user), user: publicUser(user) });
 };
@@ -121,7 +122,7 @@ exports.login = async (req, res) => {
   const wait = loginLimiter.blockedFor(key);
   if (wait) throw httpError(429, tooManyMessage(wait));
 
-  const user = readDB().users.find((u) => normalizeEmail(u.email) === email);
+  const user = await repo.findByEmail(email);
   if (!user) {
     loginLimiter.fail(key);
     throw httpError(401, "Email atau password salah.");
@@ -138,6 +139,12 @@ exports.login = async (req, res) => {
   }
   loginLimiter.clear(key);
   res.json({ token: signToken(user), user: publicUser(user) });
+};
+
+// POST /api/auth/logout   — keluar (token yang dipakai langsung tidak berlaku lagi)
+exports.logout = async (req, res) => {
+  await repo.revokeToken(req.token, req.tokenExp);
+  res.json({ success: true, message: "Berhasil logout." });
 };
 
 // POST /api/auth/reset-password   — LUPA PASSWORD
@@ -160,7 +167,7 @@ exports.resetPassword = async (req, res) => {
   if (wait) throw httpError(429, tooManyMessage(wait));
 
   const GENERIC = "Email atau nomor HP tidak cocok dengan data akun.";
-  const user = readDB().users.find((u) => normalizeEmail(u.email) === email);
+  const user = await repo.findByEmail(email);
   const savedPhone = user ? normalizePhone(user.phone) : "";
   if (!user || user.role === "admin" || !savedPhone || savedPhone !== normalizePhone(phone)) {
     resetLimiter.fail(key);
@@ -171,14 +178,8 @@ exports.resetPassword = async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(newPassword, 10);
-  await update((data) => {
-    const u = data.users.find((x) => x.id === user.id);
-    if (u) {
-      u.password = hashed;
-      // Naikkan versi token -> semua sesi login lama (termasuk milik orang lain) otomatis keluar.
-      u.tokenVersion = (u.tokenVersion || 0) + 1;
-    }
-  });
+  // Versi token dinaikkan -> semua sesi login lama otomatis keluar.
+  await repo.updatePassword(user.id, hashed);
   resetLimiter.clear(key);
   res.json({
     success: true,
@@ -203,7 +204,7 @@ exports.changePassword = async (req, res) => {
   const wait = resetLimiter.blockedFor(key);
   if (wait) throw httpError(429, tooManyMessage(wait));
 
-  const user = readDB().users.find((u) => u.id === req.user.id);
+  const user = await repo.findById(req.user.id);
   if (!user) throw httpError(404, "User tidak ditemukan.");
   if (!(await bcrypt.compare(String(currentPassword), user.password))) {
     resetLimiter.fail(key);
@@ -214,13 +215,7 @@ exports.changePassword = async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(newPassword, 10);
-  let updated;
-  await update((data) => {
-    const u = data.users.find((x) => x.id === user.id);
-    u.password = hashed;
-    u.tokenVersion = (u.tokenVersion || 0) + 1;
-    updated = { ...u };
-  });
+  const updated = await repo.updatePassword(user.id, hashed);
   resetLimiter.clear(key);
   // Token baru diberikan supaya perangkat ini tetap login, perangkat lain keluar.
   res.json({
@@ -232,8 +227,8 @@ exports.changePassword = async (req, res) => {
 };
 
 // GET /api/auth/me
-exports.me = (req, res) => {
-  const user = readDB().users.find((u) => u.id === req.user.id);
+exports.me = async (req, res) => {
+  const user = await repo.findById(req.user.id);
   if (!user) return res.status(404).json({ error: "User tidak ditemukan." });
   res.json({ user: publicUser(user) });
 };
@@ -243,41 +238,26 @@ exports.uploadAvatar = uploadAvatar;
 exports.saveAvatar = async (req, res) => {
   if (!req.file) throw httpError(400, "File foto wajib dipilih.");
   const newUrl = `/uploads/avatars/${req.file.filename}`;
-  let oldUrl = null;
-  let found = true;
-  await update((data) => {
-    const u = data.users.find((x) => x.id === req.user.id);
-    if (!u) {
-      found = false;
-      return;
-    }
-    oldUrl = u.avatar;
-    u.avatar = newUrl;
-  });
-  if (!found) {
+
+  const current = await repo.findById(req.user.id);
+  if (!current) {
     fs.unlink(req.file.path, () => {});
     throw httpError(404, "User tidak ditemukan.");
   }
-  removeOldAvatar(oldUrl);
-  const user = readDB().users.find((x) => x.id === req.user.id);
+  await repo.setAvatar(req.user.id, newUrl);
+  removeOldAvatar(current.avatar);
+
+  const user = await repo.findById(req.user.id);
   res.json({ message: "Foto profil diperbarui.", user: publicUser(user) });
 };
 
 // DELETE /api/auth/me/avatar
 exports.removeAvatar = async (req, res) => {
-  let oldUrl = null;
-  let found = true;
-  await update((data) => {
-    const u = data.users.find((x) => x.id === req.user.id);
-    if (!u) {
-      found = false;
-      return;
-    }
-    oldUrl = u.avatar;
-    u.avatar = null;
-  });
-  if (!found) throw httpError(404, "User tidak ditemukan.");
-  removeOldAvatar(oldUrl);
-  const user = readDB().users.find((x) => x.id === req.user.id);
+  const current = await repo.findById(req.user.id);
+  if (!current) throw httpError(404, "User tidak ditemukan.");
+  await repo.setAvatar(req.user.id, null);
+  removeOldAvatar(current.avatar);
+
+  const user = await repo.findById(req.user.id);
   res.json({ message: "Foto profil dihapus.", user: publicUser(user) });
 };

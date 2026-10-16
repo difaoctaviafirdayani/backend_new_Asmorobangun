@@ -15,6 +15,16 @@ module.exports = {
   JWT_IS_DEFAULT: !process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_SECRET,
   JWT_EXPIRES_IN: "7d",
 
+  // Koneksi MySQL (MySQL di web / hosting)
+  DB: {
+    HOST: process.env.DB_HOST || "localhost",
+    PORT: Number(process.env.DB_PORT) || 3306,
+    USER: process.env.DB_USER || "root",
+    PASSWORD: process.env.DB_PASSWORD || "",
+    NAME: process.env.DB_NAME || "asmorobangun",
+    SSL: process.env.DB_SSL === "true", // true kalau penyedia database mewajibkan SSL
+  },
+
   // Kosong = semua origin boleh (cocok untuk development).
   // Isi dengan daftar dipisah koma untuk produksi, contoh:
   // CORS_ORIGINS=http://localhost:3000,http://localhost:3001
