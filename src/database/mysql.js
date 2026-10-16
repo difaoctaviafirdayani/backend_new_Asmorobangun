@@ -56,6 +56,7 @@ async function initMysql() {
   `);
 
   await migrateUsersFromJson();
+    await require("./content.repo").init();
   console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 

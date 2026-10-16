@@ -8,7 +8,7 @@ const c = require("./culture.controller");
 
 const router = express.Router();
 
-router.get("/", c.get);
+router.get("/", asyncHandler(c.get));
 router.put("/", requireAuth, requireAdmin, asyncHandler(c.update));                    // admin
 router.post("/timeline", requireAuth, requireAdmin, asyncHandler(c.addTimeline));      // admin
 router.delete("/timeline/:id", requireAuth, requireAdmin, asyncHandler(c.removeTimeline)); // admin

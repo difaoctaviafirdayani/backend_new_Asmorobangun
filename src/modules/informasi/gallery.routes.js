@@ -8,8 +8,8 @@ const c = require("./gallery.controller");
 
 const router = express.Router();
 
-router.get("/", c.list);      // publik, tanpa login
-router.get("/:id", c.getOne);
+router.get("/", asyncHandler(c.list));     // publik, tanpa login
+router.get("/:id", asyncHandler(c.getOne));
 
 router.post("/", requireAuth, requireAdmin, asyncHandler(c.create));      // admin
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));  // admin

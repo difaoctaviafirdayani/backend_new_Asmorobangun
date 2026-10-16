@@ -8,9 +8,9 @@ const c = require("./articles.controller");
 
 const router = express.Router();
 
-router.get("/", c.list);                    // daftar artikel (?q= &category= &limit=)
-router.get("/categories", c.categories);    // daftar kategori
-router.get("/:slug", c.getOne);             // detail (slug atau id)
+router.get("/", asyncHandler(c.list));                  // daftar artikel (?q= &category= &limit=)
+router.get("/categories", asyncHandler(c.categories));    // daftar kategori
+router.get("/:slug", asyncHandler(c.getOne));           // detail (slug atau id)
 
 router.post("/", requireAuth, requireAdmin, asyncHandler(c.create));      // admin
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));  // admin

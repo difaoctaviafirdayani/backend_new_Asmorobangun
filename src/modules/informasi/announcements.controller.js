@@ -1,14 +1,13 @@
 const { nanoid } = require("nanoid");
-const { readDB, update } = require("../../database/db");
+const { announcements } = require("../../database/content.repo");
 const { httpError } = require("../../middleware/error");
-const { sortNewest, omit } = require("../../utils/helpers");
 
-exports.list = (req, res) => {
-  res.json({ announcements: sortNewest(readDB().announcements) });
+exports.list = async (req, res) => {
+  res.json({ announcements: await announcements.list() });
 };
 
-exports.getOne = (req, res) => {
-  const item = readDB().announcements.find((a) => a.id === req.params.id);
+exports.getOne = async (req, res) => {
+  const item = await announcements.findById(req.params.id);
   if (!item) throw httpError(404, "Pengumuman tidak ditemukan.");
   res.json({ announcement: item });
 };
@@ -16,7 +15,7 @@ exports.getOne = (req, res) => {
 exports.create = async (req, res) => {
   const { title, body, type, color, image } = req.body;
   if (!title || !body) throw httpError(400, "Judul dan isi pengumuman wajib diisi.");
-  const item = {
+  const item = await announcements.insert({
     id: `an-${nanoid(8)}`,
     title,
     body,
@@ -24,22 +23,17 @@ exports.create = async (req, res) => {
     color: color || "brown",
     image: image || null,
     date: new Date().toISOString(),
-  };
-  await update((data) => data.announcements.push(item));
+  });
   res.status(201).json({ announcement: item });
 };
 
 exports.update = async (req, res) => {
-  if (!readDB().announcements.find((a) => a.id === req.params.id)) throw httpError(404, "Pengumuman tidak ditemukan.");
-  await update((data) => {
-    Object.assign(data.announcements.find((a) => a.id === req.params.id), omit(req.body, ["id"]));
-  });
+  if (!(await announcements.findById(req.params.id))) throw httpError(404, "Pengumuman tidak ditemukan.");
+  await announcements.patch(req.params.id, req.body);
   res.json({ message: "Pengumuman diperbarui." });
 };
 
 exports.remove = async (req, res) => {
-  await update((data) => {
-    data.announcements = data.announcements.filter((a) => a.id !== req.params.id);
-  });
+  await announcements.remove(req.params.id);
   res.json({ message: "Pengumuman dihapus." });
 };

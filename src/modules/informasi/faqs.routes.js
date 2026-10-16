@@ -9,7 +9,7 @@ const c = require("./faqs.controller");
 
 const router = express.Router();
 
-router.get("/", c.list);
+router.get("/", asyncHandler(c.list));
 router.post("/", requireAuth, requireAdmin, asyncHandler(c.create));      // admin
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));  // admin
 router.delete("/:id", requireAuth, requireAdmin, asyncHandler(c.remove)); // admin

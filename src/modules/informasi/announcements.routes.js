@@ -8,8 +8,8 @@ const c = require("./announcements.controller");
 
 const router = express.Router();
 
-router.get("/", c.list);        // daftar pengumuman
-router.get("/:id", c.getOne);   // detail pengumuman
+router.get("/", asyncHandler(c.list));      // daftar pengumuman
+router.get("/:id", asyncHandler(c.getOne)); // detail pengumuman
 
 router.post("/", requireAuth, requireAdmin, asyncHandler(c.create));      // admin
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));  // admin
