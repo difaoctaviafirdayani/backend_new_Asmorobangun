@@ -6,9 +6,8 @@ const { initDb } = require("./src/database/db");
 const { initMysql } = require("./src/database/mysql");
 
 async function start() {
-  initDb(); // data lain (booking, topeng, artikel, dll) masih di data/db.json
-  await initMysql(); // akun & login di MySQL web
-
+    initDb(); // db.json hanya dipakai sebagai sumber migrasi satu kali ke MySQL
+  await initMysql(); // semua data (akun, konten, layanan, registrasi, forum) di MySQL
   const app = require("./src/app");
 
   if (JWT_IS_DEFAULT && NODE_ENV === "production") {

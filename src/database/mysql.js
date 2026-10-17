@@ -56,7 +56,10 @@ async function initMysql() {
   `);
 
   await migrateUsersFromJson();
-    await require("./content.repo").init();
+     await require("./content.repo").init();
+  await require("./layanan.repo").init();
+  await require("./registrasi.repo").init();
+  await require("./forum.repo").init();
   console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 

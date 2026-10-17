@@ -1,18 +1,12 @@
-const { readDB, update } = require("../../database/db");
-
-const FIELDS = ["bankName", "accountNumber", "accountName", "qrisMerchantName", "qrisImage", "whatsapp"];
+const { paymentSettings } = require("../../database/registrasi.repo");
 
 // GET /api/payments/settings
-exports.getSettings = (req, res) => {
-  res.json({ settings: readDB().paymentSettings });
+exports.getSettings = async (req, res) => {
+  res.json({ settings: await paymentSettings.get() });
 };
 
 // PATCH /api/payments/settings
 exports.updateSettings = async (req, res) => {
-  await update((data) => {
-    FIELDS.forEach((f) => {
-      if (req.body[f] !== undefined) data.paymentSettings[f] = req.body[f];
-    });
-  });
+  await paymentSettings.update(req.body || {});
   res.json({ message: "Pengaturan pembayaran diperbarui." });
 };

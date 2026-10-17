@@ -1,14 +1,14 @@
 const { nanoid } = require("nanoid");
-const { readDB, update } = require("../../database/db");
+const { topeng } = require("../../database/layanan.repo");
 const { httpError } = require("../../middleware/error");
 const { omit } = require("../../utils/helpers");
 
-exports.list = (req, res) => {
-  res.json({ topeng: readDB().topeng });
+exports.list = async (req, res) => {
+  res.json({ topeng: await topeng.list() });
 };
 
-exports.getOne = (req, res) => {
-  const item = readDB().topeng.find((t) => t.id === req.params.id);
+exports.getOne = async (req, res) => {
+  const item = await topeng.findById(req.params.id);
   if (!item) throw httpError(404, "Topeng tidak ditemukan.");
   res.json({ topeng: item });
 };
@@ -27,27 +27,23 @@ exports.create = async (req, res) => {
     image: image || "topeng-default.jpg",
     desc: desc || "",
   };
-  await update((data) => data.topeng.push(item));
+  await topeng.insert(item);
   res.status(201).json({ topeng: item });
 };
 
 exports.update = async (req, res) => {
-  if (!readDB().topeng.find((t) => t.id === req.params.id)) throw httpError(404, "Topeng tidak ditemukan.");
+  if (!(await topeng.findById(req.params.id))) throw httpError(404, "Topeng tidak ditemukan.");
   const body = omit(req.body, ["id"]);
   if (body.price !== undefined) {
     body.price = Number(body.price);
     if (!Number.isFinite(body.price) || body.price <= 0) throw httpError(400, "Harga harus berupa angka lebih dari 0.");
   }
   if (body.stock !== undefined) body.stock = Number(body.stock) || 0;
-  await update((data) => {
-    Object.assign(data.topeng.find((t) => t.id === req.params.id), body);
-  });
+  await topeng.patch(req.params.id, body);
   res.json({ message: "Topeng diperbarui." });
 };
 
 exports.remove = async (req, res) => {
-  await update((data) => {
-    data.topeng = data.topeng.filter((t) => t.id !== req.params.id);
-  });
+  await topeng.remove(req.params.id);
   res.json({ message: "Topeng dihapus dari katalog." });
 };
