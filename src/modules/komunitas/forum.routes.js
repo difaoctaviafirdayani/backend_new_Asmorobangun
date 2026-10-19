@@ -8,9 +8,9 @@ const c = require("./forum.controller");
 
 const router = express.Router();
 
-router.get("/", c.list);
-router.get("/categories", c.categories);
-router.get("/:id", c.getOne);
+router.get("/", asyncHandler(c.list));
+router.get("/categories", asyncHandler(c.categories));
+router.get("/:id", asyncHandler(c.getOne));
 
 router.post("/", requireAuth, asyncHandler(c.create));                      // buat diskusi (login)
 router.post("/:id/replies", requireAuth, asyncHandler(c.reply));            // balas (login)
