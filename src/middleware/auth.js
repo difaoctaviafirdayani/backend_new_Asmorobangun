@@ -1,31 +1,63 @@
+// ===========================================================================
+// MIDDLEWARE AUTH — cek token login (JWT) dan hak akses admin.
+// Data akun sekarang dibaca dari MySQL.
+// ===========================================================================
 const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = require("../config/env");
+const { findById, isTokenRevoked } = require("../database/users.repo");
 
-const JWT_SECRET = process.env.JWT_SECRET || "asmorobangun-dev-secret-change-me";
-
-function requireAuth(req, res, next) {
+function getToken(req) {
   const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) {
-    return res.status(401).json({ error: "Kamu harus login untuk melakukan ini." });
-  }
+  return header.startsWith("Bearer ") ? header.slice(7) : null;
+}
+
+// Verifikasi token, pastikan belum logout, akunnya masih ada, dan token belum dicabut
+// (token lama otomatis tidak berlaku setelah password diganti).
+async function resolveUser(token) {
+  const payload = jwt.verify(token, JWT_SECRET);
+  if (await isTokenRevoked(token)) return null; // sudah logout
+  const user = await findById(payload.id);
+  if (!user) return null;
+  if ((payload.tv || 0) !== (user.tokenVersion || 0)) return null;
+  return {
+    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    exp: payload.exp,
+  };
+}
+
+async function requireAuth(req, res, next) {
+  const token = getToken(req);
+  if (!token) return res.status(401).json({ error: "Kamu harus login untuk melakukan ini." });
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;
+    const resolved = await resolveUser(token);
+    if (!resolved) {
+      return res.status(401).json({ error: "Sesi login sudah tidak berlaku. Silakan login ulang." });
+    }
+    req.user = resolved.user;
+    req.token = token;
+    req.tokenExp = resolved.exp;
     next();
   } catch (err) {
-    return res.status(401).json({ error: "Sesi login tidak valid atau sudah kedaluwarsa." });
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError" || err.name === "NotBeforeError") {
+      return res.status(401).json({ error: "Sesi login tidak valid atau sudah kedaluwarsa." });
+    }
+    next(err); // error lain (misal MySQL mati) -> errorHandler
   }
 }
 
-// Attaches req.user if a valid token is present, but doesn't block the request otherwise.
-function optionalAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+// Menempelkan req.user kalau token valid, tapi tidak memblokir kalau tidak login.
+async function optionalAuth(req, res, next) {
+  const token = getToken(req);
   if (token) {
     try {
-      req.user = jwt.verify(token, JWT_SECRET);
+      const resolved = await resolveUser(token);
+      if (resolved) {
+        req.user = resolved.user;
+        req.token = token;
+        req.tokenExp = resolved.exp;
+      }
     } catch (err) {
-      // ignore invalid token, just continue unauthenticated
+      // token tidak valid -> dianggap belum login
     }
   }
   next();
@@ -38,4 +70,4 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, optionalAuth, requireAdmin, JWT_SECRET };
+module.exports = { requireAuth, optionalAuth, requireAdmin };
