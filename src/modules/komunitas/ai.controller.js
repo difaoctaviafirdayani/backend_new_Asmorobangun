@@ -17,7 +17,7 @@ Kamu boleh menjawab APAPUN yang berkaitan dengan topeng secara bebas dan mendala
 - Bahan baku (jenis kayu seperti kayu waru/mentaos/sengon), proses pengukiran, pewarnaan, dan finishing
 - Cara merawat topeng koleksi (dari kelembapan, rayap, retak, dsb) serta cara membersihkannya
 - Perbedaan gaya topeng antar daerah/sanggar
-- Produk yang dijual sanggar ini: nama, harga, watak, dan stok (lihat data katalog di bawah)
+- Produk yang dijual sanggar ini: nama, harga, dan watak (lihat data katalog di bawah). Semua topeng dibuat sesuai pesanan, jadi tidak ada stok.
 - Proses pemesanan, termasuk request nama/desain custom pada topeng
 
 Jika pengguna bertanya di luar topik topeng (misalnya soal jadwal kelas tari, karawitan, booking pentas,
@@ -26,8 +26,11 @@ ke menu terkait di aplikasi (Fasilitas, Forum, dsb). Selalu jawab dalam Bahasa I
 
 async function catalogSummary() {
   return (await topeng.list())
-    .map((t) => `- ${t.name} (${t.character}, warna ${t.color}): Rp ${Number(t.price).toLocaleString("id-ID")}, stok ${t.stock}`)
+    async function catalogSummary() {
+  return (await topeng.list())
+    .map((t) => `- ${t.name} (${t.character}, warna ${t.color}): Rp ${Number(t.price).toLocaleString("id-ID")}, dibuat sesuai pesanan`)
     .join("\n");
+}
 }
 
 const OFF_TOPIC = /(kelas tari|karawitan|jadwal kelas|sewa kostum|panggilan tari|kunjungan edukasi|booking|daftar kelas|forum diskusi|login|register|artikel|berita sanggar)/i;
@@ -66,7 +69,6 @@ async function ruleBasedAnswer(message) {
   return "Aku bisa bantu jawab apapun soal Topeng Malangan — sejarah, tokoh & wataknya, bahan & proses pembuatan, cara merawat, sampai katalog yang dijual di sini. Coba tanya lebih spesifik ya!";
 }
 
-
 // POST /api/ai/chat   body: { message, history? }
 exports.chat = async (req, res) => {
   const message = String(req.body.message || "").trim();
@@ -80,12 +82,14 @@ exports.chat = async (req, res) => {
     const safeHistory = (Array.isArray(history) ? history : [])
       .filter((h) => h && ["user", "assistant"].includes(h.role) && typeof h.content === "string")
       .slice(-10)
-      .map((h) => ({ role: h.role, content: h.content.slice(0, 1000) }));
+      .map((h) => ({ role: h.role, content: h.content }));
+
     const messages = [
       { role: "system", content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${await catalogSummary()}` },
       ...safeHistory,
       { role: "user", content: message },
     ];
+
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${AI_API_KEY}` },

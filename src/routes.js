@@ -34,5 +34,5 @@ router.use("/ai", require("./modules/komunitas/ai.routes"));
 // 6. ADMIN ............... src/modules/admin
 router.use("/admin", require("./modules/admin/stats.routes"));
 router.use("/uploads", require("./modules/admin/uploads.routes"));
-
+router.use("/logs", require("./modules/admin/logs.routes"));
 module.exports = router;

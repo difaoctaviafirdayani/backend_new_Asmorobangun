@@ -61,6 +61,7 @@ async function initMysql() {
   await require("./registrasi.repo").init();
   await require("./forum.repo").init();
   await require("./media.repo").init();
+  await require("./errorlog.repo").init();
   console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 

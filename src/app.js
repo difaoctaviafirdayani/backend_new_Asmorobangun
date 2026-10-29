@@ -40,7 +40,13 @@ app.use("/app/assets", express.static(path.join(__dirname, "..", "public", "asse
 
 // Semua endpoint ada di /api
 app.use("/api", absoluteUrls, apiRoutes);
-
+// Route TypeScript (Modul 01: register/login/todos). Hanya dipasang saat dijalankan lewat
+// ts-node (npm run dev); npm start (node server.js) tetap jalan tanpa route ini.
+// Route TypeScript (Modul 01: register, login, todos). Hanya dipasang saat dijalankan lewat
+// ts-node (npm run dev); npm start (node server.js) tetap jalan tanpa route ini.
+if (require.extensions[".ts"]) {
+  app.use("/api", require("./routes/api").default);
+}
 app.use(notFound);
 app.use(errorHandler);
 

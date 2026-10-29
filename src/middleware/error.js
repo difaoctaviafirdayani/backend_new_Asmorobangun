@@ -25,8 +25,23 @@ function errorHandler(err, req, res, next) {
   if (err.type === "entity.parse.failed") {
     return res.status(400).json({ error: "Format JSON yang dikirim tidak valid." });
   }
-  const status = err.status || 500;
-  if (status >= 500) console.error(err);
+    const status = err.status || 500;
+  if (status >= 500) {
+    console.error(err);
+    // Catat ke tabel error_logs supaya muncul di lonceng notifikasi admin.
+    // Kalau pencatatan gagal (mis. database mati), abaikan saja agar tidak berantai.
+    try {
+      require("../database/errorlog.repo")
+        .add({
+          source: "backend",
+          message: err.message || "Terjadi kesalahan pada server.",
+          path: `${req.method} ${req.originalUrl}`,
+          status,
+          detail: err.stack,
+        })
+        .catch(() => {});
+    } catch (_) {}
+  }
   res.status(status).json({ error: err.message || "Terjadi kesalahan pada server." });
 }
 

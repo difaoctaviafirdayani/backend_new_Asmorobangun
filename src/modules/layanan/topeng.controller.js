@@ -14,7 +14,7 @@ exports.getOne = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { name, character, color, price, stock, image, desc } = req.body;
+  const { name, character, color, price, image, desc } = req.body;
   if (!name || !price) throw httpError(400, "Nama dan harga wajib diisi.");
   if (!Number.isFinite(Number(price)) || Number(price) <= 0) throw httpError(400, "Harga harus berupa angka lebih dari 0.");
   const item = {
@@ -23,7 +23,6 @@ exports.create = async (req, res) => {
     character: character || "",
     color: color || "",
     price: Number(price),
-    stock: Number(stock) || 0,
     image: image || "topeng-default.jpg",
     desc: desc || "",
   };
@@ -39,7 +38,6 @@ exports.update = async (req, res) => {
     if (!Number.isFinite(body.price) || body.price <= 0) throw httpError(400, "Harga harus berupa angka lebih dari 0.");
   }
   if (body.stock !== undefined) body.stock = Number(body.stock) || 0;
-  await topeng.patch(req.params.id, body);
   res.json({ message: "Topeng diperbarui." });
 };
 
