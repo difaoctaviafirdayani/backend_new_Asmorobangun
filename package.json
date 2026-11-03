@@ -4,12 +4,13 @@
   "description": "Backend API Sanggar Asmorobangun (Express + penyimpanan JSON) — terstruktur per kelompok modul",
   "main": "src/index.ts",
   "type": "commonjs",
-  "scripts": {
-    "start": "ts-node --transpile-only src/index.ts",
-    "dev": "nodemon --watch src --ext js,ts,json --exec ts-node --transpile-only src/index.ts",
-    "typecheck": "tsc --noEmit",
-    "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts"
-  },
+ "scripts": {
+  "start": "ts-node --transpile-only src/index.ts",
+  "dev": "nodemon --watch src --ext js,ts,json --exec ts-node --transpile-only src/index.ts",
+  "typecheck": "tsc --noEmit",
+  "build": "tsc --noEmit",
+  "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts"
+},
   "dependencies": {
     "adm-zip": "^0.5.10",
     "bcryptjs": "^2.4.3",
