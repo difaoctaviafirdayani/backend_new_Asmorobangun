@@ -5,11 +5,11 @@
   "main": "src/index.ts",
   "type": "commonjs",
   "scripts": {
-  "start": "ts-node --transpile-only src/index.ts",
-  "dev": "nodemon --watch src --ext js,ts,json --exec ts-node --transpile-only src/index.ts",
-  "typecheck": "tsc --noEmit",
-  "fix:users": "node scripts/fix-duplicate-users.js"
-},
+    "start": "ts-node --transpile-only src/index.ts",
+    "dev": "nodemon --watch src --ext js,ts,json --exec ts-node --transpile-only src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts"
+  },
   "dependencies": {
     "adm-zip": "^0.5.10",
     "bcryptjs": "^2.4.3",
@@ -28,7 +28,9 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
+    "@types/qrcode": "^1.5.6",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
