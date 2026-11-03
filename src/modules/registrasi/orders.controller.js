@@ -3,7 +3,7 @@ const { nanoid } = require("nanoid");
 const { topeng } = require("../../database/layanan.repo");
 const { orders, paymentSettings } = require("../../database/registrasi.repo");
 const { httpError } = require("../../middleware/error");
-
+const { notifyUser } = require("../notifications/push.service");
 const VALID_PAYMENT_METHODS = ["qris", "transfer", "cash"];
 const VALID_STATUS = ["menunggu_konfirmasi_admin", "menunggu_verifikasi", "dikonfirmasi", "diproses", "dikirim", "selesai", "ditolak"];
 
@@ -121,7 +121,14 @@ exports.listAll = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   const { status } = req.body;
   if (!VALID_STATUS.includes(status)) throw httpError(400, "Status tidak valid.");
-  if (!(await orders.findById(req.params.orderId))) throw httpError(404, "Pesanan tidak ditemukan.");
+   const order = await orders.findById(req.params.orderId);
+  if (!order) throw httpError(404, "Pesanan tidak ditemukan.");
   await orders.patch(req.params.orderId, { status });
+  // Beri tahu pembeli lewat push notification (tidak pernah melempar error)
+  await notifyUser(order.userId, {
+    title: "Status pesanan diperbarui",
+    body: `Pesanan ${order.topengName}: ${status.replace(/_/g, " ")}`,
+    data: { type: "order", orderId: String(order.id), status },
+  });
   res.json({ message: "Status pesanan diperbarui." });
-};
+  };

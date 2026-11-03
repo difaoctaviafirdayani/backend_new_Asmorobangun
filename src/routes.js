@@ -30,8 +30,12 @@ router.use("/faqs", require("./modules/informasi/faqs.routes"));
 router.use("/forum", require("./modules/komunitas/forum.routes"));
 router.use("/search", require("./modules/komunitas/search.routes"));
 router.use("/ai", require("./modules/komunitas/ai.routes"));
+router.use("/ai", require("./modules/ai/analysis.routes").default); // analisis forum (Gemini) + verifikasi admin
 
-// 6. ADMIN ............... src/modules/admin
+// 6. NOTIFIKASI ......... src/modules/notifications
+router.use("/notifications", require("./modules/notifications/notifications.routes").default);
+
+// 7. ADMIN ............... src/modules/admin
 router.use("/admin", require("./modules/admin/stats.routes"));
 router.use("/uploads", require("./modules/admin/uploads.routes"));
 router.use("/logs", require("./modules/admin/logs.routes"));

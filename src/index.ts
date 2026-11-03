@@ -1,21 +1,18 @@
 // ===========================================================================
-// TITIK MASUK (TypeScript) — jalankan dengan:  npm run dev
-// Isinya sama dengan server.js; modul lama (.js) dipanggil lewat require.
+// TITIK MASUK (TypeScript) — jalankan dengan:  npm run dev   atau   npm start
 // ===========================================================================
-const { PORT, HOST, JWT_IS_DEFAULT, NODE_ENV } = require("./config/env");
-const { initDb } = require("./database/db");
-const { initMysql } = require("./database/mysql");
-  import sequelize from "./db/config/database";
+import { PORT, HOST, JWT_IS_DEFAULT } from "./config/env";
+import { initDb } from "./database/db";
+import { initMysql } from "./database/mysql";
 
 async function start(): Promise<void> {
   initDb(); // db.json hanya dipakai sebagai sumber migrasi satu kali ke MySQL
-  await initMysql(); // semua data (akun, konten, layanan, registrasi, forum) di MySQL
-    await sequelize.authenticate();
-  console.log("Database connected successfully");
-  const app = require("./app");
+  await initMysql(); // semua data (akun, konten, layanan, registrasi, forum, hasil AI) di MySQL
 
-  if (JWT_IS_DEFAULT && NODE_ENV === "production") {
-    console.warn("⚠️  JWT_SECRET masih bawaan! Ganti di file .env sebelum dipakai publik.");
+  const app = require("./app"); // dimuat setelah database siap
+
+  if (JWT_IS_DEFAULT) {
+    console.warn("⚠️  JWT_SECRET masih lemah/placeholder! Ganti dengan teks acak minimal 32 karakter di .env.");
   }
 
   app.listen(PORT, HOST, () => {
@@ -25,15 +22,13 @@ async function start(): Promise<void> {
 
 start().catch((err: any) => {
   console.error("Gagal menjalankan server:", err.message);
+  console.error(err.stack);
   if (err.code === "ENOTFOUND") console.error("-> DB_HOST salah / tidak ditemukan.");
-  if (err.code === "ECONNREFUSED" || err.code === "ETIMEDOUT")
-    console.error("-> Tidak bisa terhubung ke MySQL. Cek DB_HOST, DB_PORT, dan pastikan MySQL menyala.");
+  if (err.code === "ECONNREFUSED" || err.code === "ETIMEDOUT") console.error("-> Tidak bisa terhubung ke MySQL. Cek DB_HOST, DB_PORT, dan pastikan MySQL menyala.");
   if (err.code === "ER_ACCESS_DENIED_ERROR") console.error("-> DB_USER / DB_PASSWORD salah.");
   if (err.code === "ER_BAD_DB_ERROR") console.error("-> DB_NAME salah / database belum dibuat.");
   if (String(err.message).includes("SSL")) console.error("-> Coba set DB_SSL=true di .env.");
   process.exit(1);
 });
 
-process.on("unhandledRejection", (err) => console.error("Unhandled rejection:", err));
-
-export {};
+process.on("unhandledRejection", (err: unknown) => console.error("Unhandled rejection:", err));

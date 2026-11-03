@@ -1,6 +1,11 @@
 const { topeng } = require("../../database/layanan.repo");
 const { httpError } = require("../../middleware/error");
 const { AI_API_KEY, AI_BASE_URL, AI_MODEL } = require("../../config/env");
+const { createLimiter, tooManyMessage } = require("../../middleware/rateLimit");
+const { prepareForPrompt } = require("../../security/promptGuard");
+
+// Chatbot boleh dipakai tanpa login, jadi dibatasi per IP: maksimal 20 pesan / 10 menit.
+const chatLimiter = createLimiter({ windowMs: 10 * 60 * 1000, max: 20 });
 
 // This assistant is intentionally scoped to ONE topic only: Topeng Malangan
 // (the carved masks) — their history, characters/watak, materials, carving
@@ -26,11 +31,8 @@ ke menu terkait di aplikasi (Fasilitas, Forum, dsb). Selalu jawab dalam Bahasa I
 
 async function catalogSummary() {
   return (await topeng.list())
-    async function catalogSummary() {
-  return (await topeng.list())
     .map((t) => `- ${t.name} (${t.character}, warna ${t.color}): Rp ${Number(t.price).toLocaleString("id-ID")}, dibuat sesuai pesanan`)
     .join("\n");
-}
 }
 
 const OFF_TOPIC = /(kelas tari|karawitan|jadwal kelas|sewa kostum|panggilan tari|kunjungan edukasi|booking|daftar kelas|forum diskusi|login|register|artikel|berita sanggar)/i;
@@ -76,18 +78,33 @@ exports.chat = async (req, res) => {
   if (!message) throw httpError(400, "Pesan tidak boleh kosong.");
   if (message.length > 1000) throw httpError(400, "Pesan terlalu panjang (maksimal 1000 karakter).");
 
-  if (!AI_API_KEY) return res.json({ reply: await ruleBasedAnswer(message), mode: "rule-based" });
+  const wait = chatLimiter.blockedFor(req.ip);
+  if (wait) throw httpError(429, tooManyMessage(wait));
+  chatLimiter.fail(req.ip); // dipakai sebagai penghitung pemakaian
+
+  // Pagar keamanan: deteksi prompt injection + samarkan data pribadi (HP, email, dll).
+  const guarded = prepareForPrompt(message, { maxLen: 1000 });
+  if (guarded.injection.flagged) {
+    return res.json({
+      reply: "Maaf, pesan itu tidak bisa aku proses. Aku hanya bisa membantu seputar Topeng Malangan ya 🎭",
+      mode: "blocked",
+    });
+  }
+
+  if (!AI_API_KEY) return res.json({ reply: await ruleBasedAnswer(guarded.text), mode: "rule-based" });
 
   try {
     const safeHistory = (Array.isArray(history) ? history : [])
       .filter((h) => h && ["user", "assistant"].includes(h.role) && typeof h.content === "string")
       .slice(-10)
-      .map((h) => ({ role: h.role, content: h.content }));
+      .map((h) => ({ role: h.role, prepared: prepareForPrompt(h.content, { maxLen: 1000 }) }))
+      .filter((h) => !h.prepared.injection.flagged) // riwayat yang mengandung injection dibuang
+      .map((h) => ({ role: h.role, content: h.prepared.text }));
 
     const messages = [
       { role: "system", content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${await catalogSummary()}` },
       ...safeHistory,
-      { role: "user", content: message },
+      { role: "user", content: guarded.text },
     ];
 
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
@@ -97,10 +114,10 @@ exports.chat = async (req, res) => {
     });
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content?.trim();
-    if (!text) throw new Error(JSON.stringify(data));
+    if (!text) throw new Error("Respons AI kosong");
     res.json({ reply: text, mode: "openai-compatible" });
   } catch (err) {
     console.error("AI error:", err.message);
-    res.json({ reply: await ruleBasedAnswer(message), mode: "rule-based-fallback" });
+    res.json({ reply: await ruleBasedAnswer(guarded.text), mode: "rule-based-fallback" });
   }
 };

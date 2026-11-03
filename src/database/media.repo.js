@@ -11,7 +11,7 @@ const { getPool } = require("./mysql");
 
 const UPLOADS_ROOT = path.join(__dirname, "..", "..", "uploads");
 // Folder yang disimpan di MySQL. (avatars tetap di disk, dikelola auth.controller)
-const FOLDERS = ["site_images", "payment_proof", "chat_attachment"];
+const FOLDERS = ["site_images", "payment_proof", "chat_attachment", "avatars"];
 
 const MIME = {
   ".jpg": "image/jpeg",

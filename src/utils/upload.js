@@ -16,15 +16,14 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function makeUploader(subfolder) {
+function makeUploader(subfolder, allowed = /^\.(jpe?g|png|webp|gif|pdf)$/i) {
   const parser = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
     fileFilter: (req, file, cb) => {
-      const allowed = /^\.(jpe?g|png|webp|gif|pdf)$/i;
       if (allowed.test(path.extname(file.originalname))) cb(null, true);
       else {
-        const err = new Error("Format file tidak didukung (gunakan JPG/PNG/WEBP/GIF/PDF).");
+        const err = new Error("Format file tidak didukung.");
         err.status = 400;
         cb(err);
       }

@@ -1,15 +1,12 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const { nanoid } = require("nanoid");
 
 const repo = require("../../database/users.repo");
 const { JWT_SECRET, JWT_EXPIRES_IN } = require("../../config/env");
 const { httpError } = require("../../middleware/error");
 const { createLimiter, tooManyMessage } = require("../../middleware/rateLimit");
-const { UPLOADS_ROOT, ensureDir } = require("../../utils/upload");
+const { makeUploader } = require("../../utils/upload");
 const { PASSWORD_MSG, PASSWORD_RULES, ONLY_ALNUM, passwordError } = require("../../utils/password");
 const { normalizePhone, normalizeEmail, EMAIL_REGEX } = require("../../utils/helpers");
 
@@ -33,31 +30,9 @@ function signToken(user) {
 }
 
 // ---------- Foto profil ----------
-const AVATAR_DIR = path.join(UPLOADS_ROOT, "avatars");
-ensureDir(AVATAR_DIR);
-
-const uploadAvatar = multer({
-  storage: multer.diskStorage({
-    destination: AVATAR_DIR,
-    filename: (req, file, cb) => {
-      const ext = (path.extname(file.originalname) || ".jpg").toLowerCase();
-      cb(null, `${req.user.id}-${Date.now()}-${nanoid(6)}${ext}`);
-    },
-  }),
-  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB
-  fileFilter: (req, file, cb) => {
-    const okMime = /^image\/(jpeg|png|webp)$/i.test(file.mimetype);
-    const okExt = /\.(jpe?g|png|webp)$/i.test(file.originalname);
-    if (okMime && okExt) cb(null, true);
-    else cb(httpError(400, "Foto profil harus berformat JPG, PNG, atau WEBP."));
-  },
-}).single("avatar");
-
-// Hapus file foto lama (hanya yang memang ada di folder avatars, biar aman)
-function removeOldAvatar(avatarUrl) {
-  if (!avatarUrl || !avatarUrl.startsWith("/uploads/avatars/")) return;
-  fs.unlink(path.join(AVATAR_DIR, path.basename(avatarUrl)), () => {});
-}
+// Disimpan di MySQL (tabel media_files), BUKAN di disk -> aman untuk Vercel (disk read-only).
+// Hanya JPG/PNG/WEBP, maksimal 8MB.
+const uploadAvatar = makeUploader("avatars", /^\.(jpe?g|png|webp)$/i).single("avatar");
 
 // ---------- Handler ----------
 
@@ -240,12 +215,8 @@ exports.saveAvatar = async (req, res) => {
   const newUrl = `/uploads/avatars/${req.file.filename}`;
 
   const current = await repo.findById(req.user.id);
-  if (!current) {
-    fs.unlink(req.file.path, () => {});
-    throw httpError(404, "User tidak ditemukan.");
-  }
+  if (!current) throw httpError(404, "User tidak ditemukan.");
   await repo.setAvatar(req.user.id, newUrl);
-  removeOldAvatar(current.avatar);
 
   const user = await repo.findById(req.user.id);
   res.json({ message: "Foto profil diperbarui.", user: publicUser(user) });
@@ -256,7 +227,6 @@ exports.removeAvatar = async (req, res) => {
   const current = await repo.findById(req.user.id);
   if (!current) throw httpError(404, "User tidak ditemukan.");
   await repo.setAvatar(req.user.id, null);
-  removeOldAvatar(current.avatar);
 
   const user = await repo.findById(req.user.id);
   res.json({ message: "Foto profil dihapus.", user: publicUser(user) });

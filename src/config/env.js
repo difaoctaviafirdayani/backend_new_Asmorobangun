@@ -4,15 +4,24 @@
 require("dotenv").config();
 
 const DEFAULT_SECRET = "asmorobangun-dev-secret-change-me";
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Secret dianggap LEMAH kalau kosong, bawaan, terlalu pendek, atau masih placeholder "ISI_...".
+const rawSecret = process.env.JWT_SECRET || "";
+const JWT_IS_WEAK = !rawSecret || rawSecret === DEFAULT_SECRET || rawSecret.length < 32 || /^ISI_/i.test(rawSecret);
+if (JWT_IS_WEAK && NODE_ENV === "production") {
+  // Di produksi server SENGAJA tidak mau jalan kalau secret lemah (token bisa dipalsukan).
+  throw new Error("JWT_SECRET belum aman. Isi dengan teks acak minimal 32 karakter di .env / Environment Variables.");
+}
 
 module.exports = {
-  NODE_ENV: process.env.NODE_ENV || "development",
+  NODE_ENV,
   PORT: Number(process.env.PORT) || 4000,
   // 0.0.0.0 = bisa diakses dari HP / emulator Flutter dalam jaringan yang sama
   HOST: process.env.HOST || "0.0.0.0",
 
   JWT_SECRET: process.env.JWT_SECRET || DEFAULT_SECRET,
-  JWT_IS_DEFAULT: !process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_SECRET,
+  JWT_IS_DEFAULT: JWT_IS_WEAK,
   JWT_EXPIRES_IN: "7d",
 
   // Koneksi MySQL (MySQL di web / hosting)
@@ -38,6 +47,14 @@ module.exports = {
   PUBLIC_URL: (process.env.PUBLIC_URL || "").replace(/\/$/, ""),
   // true = SEMUA respons selalu berisi URL gambar lengkap (http://...)
   ABSOLUTE_URLS: process.env.ABSOLUTE_URLS === "true",
+
+  // AI utama (Gemini) — dipakai untuk analisis forum yang hasilnya diverifikasi admin
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+
+  // Push notification (Firebase Cloud Messaging). Isi dengan JSON service account
+  // (boleh dalam bentuk base64 supaya muat di satu baris .env). Kosong = push dimatikan.
+  FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT || "",
 
   // Chatbot topeng (opsional)
   AI_API_KEY: process.env.AI_API_KEY || "",

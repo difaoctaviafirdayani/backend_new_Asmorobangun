@@ -62,6 +62,8 @@ async function initMysql() {
   await require("./forum.repo").init();
   await require("./media.repo").init();
   await require("./errorlog.repo").init();
+  await require("./ai.repo").init(); // hasil AI (Gemini) + status verifikasi admin
+  await require("./push.repo").init(); // token perangkat untuk push notification
   console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 

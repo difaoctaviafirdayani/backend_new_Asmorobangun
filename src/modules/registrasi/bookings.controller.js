@@ -3,7 +3,7 @@ const { nanoid } = require("nanoid");
 const { facilities } = require("../../database/layanan.repo");
 const { bookings, paymentSettings } = require("../../database/registrasi.repo");
 const { httpError } = require("../../middleware/error");
-
+const { notifyUser } = require("../notifications/push.service");
 const VALID_PAYMENT_METHODS = ["qris", "transfer", "cash"];
 const VALID_STATUS = [
   "menunggu_pembayaran",
@@ -133,7 +133,13 @@ exports.listAll = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   const { status } = req.body;
   if (!VALID_STATUS.includes(status)) throw httpError(400, "Status tidak valid.");
-  if (!(await bookings.findById(req.params.id))) throw httpError(404, "Booking tidak ditemukan.");
+    const booking = await bookings.findById(req.params.id);
+  if (!booking) throw httpError(404, "Booking tidak ditemukan.");
   await bookings.patch(req.params.id, { status });
+  await notifyUser(booking.userId, {
+    title: "Status booking diperbarui",
+    body: `Booking ${booking.facilityName}: ${status.replace(/_/g, " ")}`,
+    data: { type: "booking", bookingId: String(booking.id), status },
+  });
   res.json({ message: "Status booking diperbarui." });
 };
