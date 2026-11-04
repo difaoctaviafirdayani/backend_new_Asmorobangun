@@ -1,11 +1,9 @@
-// REPOSITORY REGISTRASI — booking, pesanan topeng (+ chat), pengaturan pembayaran (MySQL).
 import { getPool } from "./mysql";
 import { makeRepo, TABLE_OPTS, toIso, toDate } from "./table";
 import { readDB } from "./db";
 
 type Row = Record<string, any>;
 
-// ---------------------------------------------------------------- booking
 export const bookings = makeRepo({
   table: "bookings",
   fields: {
@@ -32,7 +30,6 @@ export const bookings = makeRepo({
   order: "created_at DESC",
 });
 
-// ---------------------------------------------------------------- pesanan topeng
 const ordersBase = makeRepo({
   table: "topeng_orders",
   fields: {
@@ -63,7 +60,6 @@ function chatOut(row: Row): { from: string; text: string; date: string } {
   return { from: row.sender, text: row.text, date: toIso(row.date) };
 }
 
-// tempelkan chatLog ke daftar pesanan (satu query untuk semua)
 async function withChat(orderList: Row[]): Promise<Row[]> {
   if (!orderList.length) return orderList;
   const [rows] = await getPool().query(
@@ -75,8 +71,35 @@ async function withChat(orderList: Row[]): Promise<Row[]> {
   return orderList.map((o) => ({ ...o, chatLog: byOrder[o.id] || [] }));
 }
 
+export const ORDER_PAYMENT_WINDOW_HOURS = 24;
+let lastExpireRun = 0;
+
 export const orders = {
   patch: ordersBase.patch,
+
+  async cancelExpiredUnpaid(force = false): Promise<number> {
+    const nowMs = Date.now();
+    if (!force && nowMs - lastExpireRun < 60_000) return 0;
+    lastExpireRun = nowMs;
+    const cutoff = new Date(nowMs - ORDER_PAYMENT_WINDOW_HOURS * 3600 * 1000);
+    const pool = getPool();
+    const where =
+      "status = 'menunggu_konfirmasi_admin' AND (proof_file IS NULL OR proof_file = '') " +
+      "AND (payment_method IS NULL OR payment_method <> 'cash') AND created_at < ?";
+    const [rows] = await pool.query(`SELECT id FROM topeng_orders WHERE ${where}`, [cutoff]);
+    const ids = (rows as Row[]).map((r) => r.id);
+    if (!ids.length) return 0;
+    await pool.query("UPDATE topeng_orders SET status = 'dibatalkan' WHERE id IN (?)", [ids]);
+    for (const id of ids) {
+      await pool.query("INSERT INTO topeng_order_chat (order_id, sender, `text`, `date`) VALUES (?, ?, ?, ?)", [
+        id,
+        "system",
+        `Pesanan dibatalkan otomatis karena belum dibayar dalam ${ORDER_PAYMENT_WINDOW_HOURS} jam.`,
+        new Date(),
+      ]);
+    }
+    return ids.length;
+  },
 
   async findById(id: string): Promise<Row | null> {
     const o = await ordersBase.findById(id);
@@ -91,7 +114,6 @@ export const orders = {
     return this.list({ where: "user_id = ?", params: [userId] });
   },
 
-  // pesanan + pesan chat awal disimpan sekaligus (transaksi)
   async create(order: Row): Promise<Row | null> {
     const { chatLog = [], ...fields } = order;
     const conn = await getPool().getConnection();
@@ -126,7 +148,6 @@ export const orders = {
   },
 };
 
-// ---------------------------------------------------------------- pengaturan pembayaran (1 baris)
 const PAY_FIELDS: Record<string, string> = {
   bankName: "bank_name",
   accountNumber: "account_number",
@@ -154,7 +175,6 @@ export const paymentSettings = {
   },
 };
 
-// ---------------------------------------------------------------- tabel & migrasi
 export async function init(): Promise<void> {
   const pool = getPool();
 
@@ -259,7 +279,6 @@ async function migrateFromJson(): Promise<void> {
     if (masuk) console.log(`Migrasi topengOrders dari db.json -> MySQL: ${masuk} data dipindahkan.`);
   }
 
-  // baris pengaturan pembayaran: isi dari db.json hanya saat baris belum ada
   await insertPaymentSettings(json.paymentSettings || {});
 }
 
