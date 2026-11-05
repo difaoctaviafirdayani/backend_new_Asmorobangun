@@ -8,9 +8,11 @@ import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { asyncHandler } from "../../middleware/error";
 import { makeUploader } from "../../utils/upload";
 import * as c from "./orders.controller";
+import { orderReview as rv } from "./reviews.controller";
 
 const router = Router();
 const uploadProof = makeUploader("payment_proof");
+const uploadReviewImage = makeUploader("review", /^\.(jpe?g|png|webp|gif)$/i);
 
 // ----- Pembeli -----
 router.post("/:id/order", requireAuth, asyncHandler(c.create));                 // buat pesanan (id = id topeng)
@@ -21,8 +23,16 @@ router.get("/orders/:orderId/transfer", requireAuth, asyncHandler(c.getTransfer)
 router.post("/orders/:orderId/proof", requireAuth, ...uploadProof.single("proof"), asyncHandler(c.uploadProof)); // bukti bayar
 router.post("/orders/:orderId/cash", requireAuth, asyncHandler(c.payCash));     // bayar tunai
 
+// ulasan (hanya setelah pesanan selesai; pemilik boleh edit dan hapus)
+router.get("/orders/:orderId/review", requireAuth, asyncHandler(rv.get));
+router.post("/orders/:orderId/review", requireAuth, asyncHandler(rv.create));
+router.put("/orders/:orderId/review", requireAuth, asyncHandler(rv.update));
+router.delete("/orders/:orderId/review", requireAuth, asyncHandler(rv.remove));
+router.post("/orders/:orderId/review/image", requireAuth, ...uploadReviewImage.single("image"), asyncHandler(rv.setImage));
+router.delete("/orders/:orderId/review/image", requireAuth, asyncHandler(rv.clearImage));
+
 // ----- Admin -----
 router.get("/admin/orders", requireAuth, requireAdmin, asyncHandler(c.listAll));
 router.patch("/admin/orders/:orderId/status", requireAuth, requireAdmin, asyncHandler(c.updateStatus));
 
-export default router;
+export default router;

@@ -6,6 +6,7 @@ import { orders, paymentSettings } from "../../database/registrasi.repo";
 import { httpError } from "../../middleware/error";
 import { notifyUser } from "../notifications/push.service";
 import type { AuthedRequest } from "../../types/auth";
+import { attachOrderReviews } from "./reviews.controller";
 
 const VALID_PAYMENT_METHODS = ["qris", "transfer", "cash"];
 const VALID_STATUS = ["menunggu_konfirmasi_admin", "menunggu_verifikasi", "dikonfirmasi", "diproses", "dikirim", "selesai", "ditolak", "dibatalkan"];
@@ -20,6 +21,7 @@ async function findOrder(req: Request, { adminAllowed = false } = {}): Promise<R
   return order;
 }
 
+// POST /api/topeng/:id/order
 export async function create(req: Request, res: Response): Promise<void> {
   const { user } = req as AuthedRequest;
   const { qty, customName, customDesign, message, paymentMethod, buyerPhone } = req.body;
@@ -58,16 +60,19 @@ export async function create(req: Request, res: Response): Promise<void> {
   res.status(201).json({ order: await orders.create(order) });
 }
 
+// GET /api/topeng/orders/mine
 export async function listMine(req: Request, res: Response): Promise<void> {
   const { user } = req as AuthedRequest;
   await orders.cancelExpiredUnpaid();
-  res.json({ orders: await orders.listByUser(user.id) });
+  res.json({ orders: await attachOrderReviews(await orders.listByUser(user.id)) });
 }
 
+// GET /api/topeng/orders/:orderId
 export async function getOne(req: Request, res: Response): Promise<void> {
   res.json({ order: await findOrder(req, { adminAllowed: true }) });
 }
 
+// GET /api/topeng/orders/:orderId/qris
 export async function getQris(req: Request, res: Response): Promise<void> {
   const order = await findOrder(req, { adminAllowed: true });
   const settings = await paymentSettings.get();
@@ -84,11 +89,13 @@ export async function getQris(req: Request, res: Response): Promise<void> {
   res.json({ qris: dataUrl, amount: order.total, note: "QRIS simulasi untuk keperluan demo/prototipe." });
 }
 
+// GET /api/topeng/orders/:orderId/transfer
 export async function getTransfer(req: Request, res: Response): Promise<void> {
   const order = await findOrder(req, { adminAllowed: true });
   res.json({ bank: await paymentSettings.get(), amount: order.total });
 }
 
+// POST /api/topeng/orders/:orderId/proof  (multipart, field: proof)
 export async function uploadProof(req: Request, res: Response): Promise<void> {
   const order = await findOrder(req);
   if (order.status === "dibatalkan") throw httpError(400, "Pesanan sudah dibatalkan karena tidak dibayar dalam 24 jam. Silakan buat pesanan baru.");
@@ -103,6 +110,7 @@ export async function uploadProof(req: Request, res: Response): Promise<void> {
   res.json({ message: "Bukti pembayaran diunggah.", proofFile: fileUrl });
 }
 
+// POST /api/topeng/orders/:orderId/cash
 export async function payCash(req: Request, res: Response): Promise<void> {
   const order = await findOrder(req);
   if (order.status === "dibatalkan") throw httpError(400, "Pesanan sudah dibatalkan karena tidak dibayar dalam 24 jam. Silakan buat pesanan baru.");
@@ -116,21 +124,24 @@ export async function payCash(req: Request, res: Response): Promise<void> {
   res.json({ message: "Pembayaran tunai dicatat.", paymentMethod: "cash" });
 }
 
+// GET /api/topeng/admin/orders   (admin)
 export async function listAll(_req: Request, res: Response): Promise<void> {
   await orders.cancelExpiredUnpaid();
   res.json({ orders: await orders.list() });
 }
 
+// PATCH /api/topeng/admin/orders/:orderId/status   (admin)
 export async function updateStatus(req: Request, res: Response): Promise<void> {
   const { status } = req.body;
   if (!VALID_STATUS.includes(status)) throw httpError(400, "Status tidak valid.");
   const order = await orders.findById(req.params.orderId);
   if (!order) throw httpError(404, "Pesanan tidak ditemukan.");
   await orders.patch(req.params.orderId, { status });
+  // Beri tahu pembeli lewat push notification (tidak pernah melempar error)
   await notifyUser(order.userId, {
     title: "Status pesanan diperbarui",
     body: `Pesanan ${order.topengName}: ${String(status).replace(/_/g, " ")}`,
     data: { type: "order", orderId: String(order.id), status },
   });
   res.json({ message: "Status pesanan diperbarui." });
-}
+}

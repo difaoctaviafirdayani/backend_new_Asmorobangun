@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { nanoid } from "nanoid";
-import { topeng } from "../../database/layanan.repo";
+import { topeng, topengReviews } from "../../database/layanan.repo";
 import { httpError } from "../../middleware/error";
 import { omit } from "../../utils/helpers";
 
@@ -11,7 +11,8 @@ export async function list(_req: Request, res: Response): Promise<void> {
 export async function getOne(req: Request, res: Response): Promise<void> {
   const item = await topeng.findById(req.params.id);
   if (!item) throw httpError(404, "Topeng tidak ditemukan.");
-  res.json({ topeng: item });
+  const [items, summary] = await Promise.all([topengReviews.listByTopeng(item.id), topengReviews.summaryOf(item.id)]);
+  res.json({ topeng: { ...item, reviewCount: summary.count, avgRating: summary.avg }, reviews: items });
 }
 
 export async function create(req: Request, res: Response): Promise<void> {
@@ -47,4 +48,12 @@ export async function update(req: Request, res: Response): Promise<void> {
 export async function remove(req: Request, res: Response): Promise<void> {
   await topeng.remove(req.params.id);
   res.json({ message: "Topeng dihapus dari katalog." });
+}
+
+// DELETE /api/topeng/:id/reviews/:reviewId  (admin, untuk moderasi)
+export async function removeReview(req: Request, res: Response): Promise<void> {
+  const review = await topengReviews.findById(req.params.reviewId);
+  if (!review || review.topengId !== req.params.id) throw httpError(404, "Ulasan tidak ditemukan.");
+  await topengReviews.remove(req.params.reviewId);
+  res.json({ message: "Ulasan dihapus." });
 }

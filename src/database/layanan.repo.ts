@@ -33,6 +33,8 @@ const reviewsBase = makeRepo({
     rating: "rating",
     comment: "comment",
     date: "date",
+    bookingId: "booking_id",
+    image: "image",
   },
   dates: ["date"],
   nums: ["rating"],
@@ -44,6 +46,14 @@ export const reviews = {
   listByFacility(facilityId: string) {
     return reviewsBase.list({ where: "facility_id = ?", params: [facilityId] });
   },
+  async findByBooking(bookingId: string) {
+    const rows = await reviewsBase.list({ where: "booking_id = ?", params: [bookingId] });
+    return rows[0] || null;
+  },
+  listByBookings(bookingIds: string[]) {
+    if (!bookingIds.length) return Promise.resolve([]);
+    return reviewsBase.list({ where: "booking_id IN (?)", params: [bookingIds] });
+  },
   // { [facilityId]: { count, avg } } — avg sudah dibulatkan 1 desimal
   async summary(): Promise<Record<string, { count: number; avg: number | null }>> {
     const [rows] = await getPool().query(
@@ -54,6 +64,47 @@ export const reviews = {
       out[r.facility_id] = { count: Number(r.cnt), avg: r.avg_rating ? Math.round(Number(r.avg_rating) * 10) / 10 : null };
     }
     return out;
+  },
+};
+
+// Ulasan katalog topeng. Satu ulasan per pesanan (order_id unik), hanya untuk pesanan yang selesai.
+const topengReviewsBase = makeRepo({
+  table: "topeng_reviews",
+  fields: {
+    id: "id",
+    topengId: "topeng_id",
+    orderId: "order_id",
+    userId: "user_id",
+    userName: "user_name",
+    rating: "rating",
+    comment: "comment",
+    image: "image",
+    date: "date",
+  },
+  dates: ["date"],
+  nums: ["rating"],
+  order: "`date` DESC",
+});
+
+export const topengReviews = {
+  ...topengReviewsBase,
+  listByTopeng(topengId: string) {
+    return topengReviewsBase.list({ where: "topeng_id = ?", params: [topengId] });
+  },
+  async findByOrder(orderId: string) {
+    const rows = await topengReviewsBase.list({ where: "order_id = ?", params: [orderId] });
+    return rows[0] || null;
+  },
+  listByOrders(orderIds: string[]) {
+    if (!orderIds.length) return Promise.resolve([]);
+    return topengReviewsBase.list({ where: "order_id IN (?)", params: [orderIds] });
+  },
+  async summaryOf(topengId: string): Promise<{ count: number; avg: number | null }> {
+    const [[row]] = await getPool().query(
+      "SELECT COUNT(*) AS cnt, AVG(rating) AS avg_rating FROM topeng_reviews WHERE topeng_id = ?",
+      [topengId]
+    );
+    return { count: Number(row.cnt), avg: row.avg_rating ? Math.round(Number(row.avg_rating) * 10) / 10 : null };
   },
 };
 
@@ -120,7 +171,39 @@ export async function init(): Promise<void> {
       UNIQUE KEY uq_topeng_seq (seq)
     ) ${TABLE_OPTS}`);
 
+  // Kolom baru di tabel reviews (tautan ke booking + foto opsional). Aman dijalankan berulang.
+  await addColumnIfMissing("reviews", "booking_id", "VARCHAR(30) NULL");
+  await addColumnIfMissing("reviews", "image", "VARCHAR(255) NULL");
+  try {
+    await pool.query("ALTER TABLE reviews ADD UNIQUE KEY uq_reviews_booking (booking_id)");
+  } catch (e: any) {
+    if (e.code !== "ER_DUP_KEYNAME") throw e;
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS topeng_reviews (
+      id        VARCHAR(30)  NOT NULL PRIMARY KEY,
+      topeng_id VARCHAR(30)  NOT NULL,
+      order_id  VARCHAR(30)  NOT NULL,
+      user_id   VARCHAR(30)  NULL,
+      user_name VARCHAR(100) NOT NULL,
+      rating    TINYINT      NOT NULL,
+      comment   TEXT         NOT NULL,
+      image     VARCHAR(255) NULL,
+      \`date\`   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      UNIQUE KEY uq_topeng_reviews_order (order_id),
+      KEY idx_topeng_reviews_topeng (topeng_id)
+    ) ${TABLE_OPTS}`);
+
   await migrateFromJson();
+}
+
+async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
+  const [[row]] = await getPool().query(
+    "SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+    [table, column]
+  );
+  if (Number(row.n) === 0) await getPool().query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
 }
 
 async function migrateFromJson(): Promise<void> {
@@ -147,4 +230,4 @@ async function migrateFromJson(): Promise<void> {
     }
     if (masuk) console.log(`Migrasi ${key} dari db.json -> MySQL: ${masuk} data dipindahkan.`);
   }
-}
+}

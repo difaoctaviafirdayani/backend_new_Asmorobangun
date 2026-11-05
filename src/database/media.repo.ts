@@ -9,7 +9,7 @@ import { getPool } from "./mysql";
 
 const UPLOADS_ROOT = path.join(__dirname, "..", "..", "uploads");
 // Folder yang disimpan di MySQL.
-export const FOLDERS: string[] = ["site_images", "payment_proof", "chat_attachment", "avatars"];
+export const FOLDERS: string[] = ["site_images", "payment_proof", "chat_attachment", "avatars", "review"];
 
 const MIME: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -76,4 +76,4 @@ export async function init(): Promise<void> {
       PRIMARY KEY (folder, filename)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   await importExistingFiles();
-}
+}

@@ -6,6 +6,7 @@ import { bookings, paymentSettings } from "../../database/registrasi.repo";
 import { httpError } from "../../middleware/error";
 import { notifyUser } from "../notifications/push.service";
 import type { AuthedRequest } from "../../types/auth";
+import { attachBookingReviews } from "./reviews.controller";
 
 const VALID_PAYMENT_METHODS = ["qris", "transfer", "cash"];
 const VALID_STATUS = [
@@ -74,7 +75,8 @@ export async function create(req: Request, res: Response): Promise<void> {
 // GET /api/bookings/mine
 export async function listMine(req: Request, res: Response): Promise<void> {
   const { user } = req as AuthedRequest;
-  res.json({ bookings: await bookings.list({ where: "user_id = ?", params: [user.id] }) });
+  const list = await bookings.list({ where: "user_id = ?", params: [user.id] });
+  res.json({ bookings: await attachBookingReviews(list) });
 }
 
 // GET /api/bookings/:id/qris
@@ -154,4 +156,4 @@ export async function updateStatus(req: Request, res: Response): Promise<void> {
     data: { type: "booking", bookingId: String(booking.id), status },
   });
   res.json({ message: "Status booking diperbarui." });
-}
+}

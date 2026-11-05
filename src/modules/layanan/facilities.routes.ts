@@ -10,8 +10,8 @@ const router = Router();
 
 router.get("/", asyncHandler(c.list));
 router.get("/:id", asyncHandler(c.getOne));
-router.post("/:id/reviews", requireAuth, asyncHandler(c.addReview));                                      // pengguna login
+// Ulasan ditulis lewat /api/bookings/:id/review (hanya setelah booking selesai)
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));                                  // admin (Kelola Kelas)
 router.delete("/:facilityId/reviews/:reviewId", requireAuth, requireAdmin, asyncHandler(c.removeReview)); // admin
 
-export default router;
+export default router;

@@ -15,5 +15,6 @@ router.get("/:id", asyncHandler(c.getOne));
 router.post("/", requireAuth, requireAdmin, asyncHandler(c.create));      // admin
 router.patch("/:id", requireAuth, requireAdmin, asyncHandler(c.update));  // admin
 router.delete("/:id", requireAuth, requireAdmin, asyncHandler(c.remove)); // admin
+router.delete("/:id/reviews/:reviewId", requireAuth, requireAdmin, asyncHandler(c.removeReview)); // admin (moderasi ulasan)
 
-export default router;
+export default router;
