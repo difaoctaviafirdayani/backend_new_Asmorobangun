@@ -46,6 +46,15 @@ export async function create(req: Request, res: Response): Promise<void> {
   let amount: number | null = Number.isFinite(requested) && requested > 0 ? requested : null;
   if (facility.price && (amount === null || amount < facility.price)) amount = facility.price;
 
+  // Kelas wisata dihitung per peserta: total = harga x jumlah peserta.
+  let guests: any = guestCount;
+  if (facility.bookingType === "wisata") {
+    const qty = Math.floor(Number(guestCount));
+    if (!Number.isFinite(qty) || qty < 1 || qty > 50) throw httpError(400, "Jumlah peserta harus 1 sampai 50.");
+    guests = qty;
+    if (facility.price) amount = facility.price * qty;
+  }
+
   const booking = {
     id: `bk-${nanoid(8)}`,
     facilityId,
@@ -58,7 +67,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     notes: notes || "",
     eventType: eventType || null,
     location: location || null,
-    guestCount: guestCount || null,
+    guestCount: guests || null,
     paymentMethod: method,
     amount,
     proofFile: null,
@@ -156,4 +165,4 @@ export async function updateStatus(req: Request, res: Response): Promise<void> {
     data: { type: "booking", bookingId: String(booking.id), status },
   });
   res.json({ message: "Status booking diperbarui." });
-}
+}
