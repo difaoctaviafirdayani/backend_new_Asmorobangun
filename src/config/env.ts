@@ -49,6 +49,12 @@ export const ABSOLUTE_URLS: boolean = process.env.ABSOLUTE_URLS === "true";
 export const GEMINI_API_KEY: string = process.env.GEMINI_API_KEY || "";
 export const GEMINI_MODEL: string = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+// Cloud storage (Cloudinary). Kalau ketiganya diisi, foto & file upload dikirim ke cloud, bukan MySQL.
+export const CLOUDINARY = {
+  CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
+  API_KEY: process.env.CLOUDINARY_API_KEY || "",
+  API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
+};
 // Push notification (Firebase). Isi JSON service account (boleh base64). Kosong = push dimatikan.
 export const FIREBASE_SERVICE_ACCOUNT: string = process.env.FIREBASE_SERVICE_ACCOUNT || "";
 
