@@ -1,7 +1,8 @@
 // ===========================================================================
 // UPLOAD FILE (multer) — foto topeng, galeri, bukti pembayaran, dll.
-// File diterima di memori lalu DISIMPAN KE MySQL (lihat database/media.repo.ts).
-// req.file.filename berisi nama file, URL-nya /uploads/<subfolder>/<nama file>.
+// File diterima di memori lalu dikirim ke CLOUD (Cloudinary, lihat utils/cloud.ts).
+// Kalau Cloudinary belum diatur di .env, file disimpan ke MySQL (database/media.repo.ts).
+// Untuk mendapat URL yang harus disimpan ke database, pakai uploadedUrl(req.file, subfolder).
 // ===========================================================================
 import multer from "multer";
 import path from "path";
@@ -9,6 +10,27 @@ import { nanoid } from "nanoid";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import * as media from "../database/media.repo";
 import { httpError } from "../middleware/error";
+import { cloudEnabled, uploadToCloud } from "./cloud";
+
+// Tambahan field di req.file: URL cloud (kalau Cloudinary aktif)
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    namespace Multer {
+      interface File {
+        cloudUrl?: string;
+      }
+    }
+  }
+}
+
+/**
+ * URL yang disimpan ke database untuk file yang baru diupload.
+ * Cloud aktif -> URL https Cloudinary. Cloud belum diatur -> "/uploads/<folder>/<nama file>" (MySQL).
+ */
+export function uploadedUrl(file: Express.Multer.File, folder: string): string {
+  return file.cloudUrl || `/uploads/${folder}/${file.filename}`;
+}
 
 type Kind = "jpg" | "png" | "gif" | "webp" | "pdf";
 
@@ -45,7 +67,7 @@ export function makeUploader(
     },
   });
 
-  // Setelah multer membaca file, simpan ke MySQL dan isi req.file.filename.
+  // Setelah multer membaca file, kirim ke cloud (atau MySQL kalau cloud belum diatur) dan isi req.file.filename.
   const persist = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.file) return next();
     try {
@@ -54,7 +76,16 @@ export function makeUploader(
       if (!kind || !allowed.test("." + kind)) throw httpError(400, formatMessage());
 
       const filename = `${Date.now()}-${nanoid(8)}.${kind}`;
-      await media.save(subfolder, filename, req.file.buffer);
+      if (cloudEnabled) {
+        try {
+          req.file.cloudUrl = await uploadToCloud(subfolder, filename, kind, req.file.buffer);
+        } catch (e: any) {
+          console.error("Upload ke Cloudinary gagal:", e && e.message ? e.message : e);
+          throw httpError(502, "Gagal mengunggah ke penyimpanan cloud. Coba lagi sebentar.");
+        }
+      } else {
+        await media.save(subfolder, filename, req.file.buffer);
+      }
       req.file.filename = filename;
       next();
     } catch (err: any) {

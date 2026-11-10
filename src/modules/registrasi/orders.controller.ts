@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { topeng } from "../../database/layanan.repo";
 import { orders, paymentSettings } from "../../database/registrasi.repo";
 import { httpError } from "../../middleware/error";
+import { uploadedUrl } from "../../utils/upload";
 import { notifyUser } from "../notifications/push.service";
 import type { AuthedRequest } from "../../types/auth";
 import { attachOrderReviews } from "./reviews.controller";
@@ -144,4 +145,4 @@ export async function updateStatus(req: Request, res: Response): Promise<void> {
     data: { type: "order", orderId: String(order.id), status },
   });
   res.json({ message: "Status pesanan diperbarui." });
-}
+}

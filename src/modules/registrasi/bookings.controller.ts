@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { facilities } from "../../database/layanan.repo";
 import { bookings, paymentSettings } from "../../database/registrasi.repo";
 import { httpError } from "../../middleware/error";
+import { uploadedUrl } from "../../utils/upload";
 import { notifyUser } from "../notifications/push.service";
 import type { AuthedRequest } from "../../types/auth";
 import { attachBookingReviews } from "./reviews.controller";
@@ -126,7 +127,7 @@ export async function uploadProof(req: Request, res: Response): Promise<void> {
   const booking = await findOwnedBooking(req);
   if (!req.file) throw httpError(400, "File bukti pembayaran wajib diunggah.");
 
-  const fileUrl = `/uploads/payment_proof/${req.file.filename}`;
+  const fileUrl = uploadedUrl(req.file, "payment_proof");
   const method = VALID_PAYMENT_METHODS.includes(req.body.paymentMethod) ? req.body.paymentMethod : null;
   await bookings.patch(booking.id, {
     proofFile: fileUrl,

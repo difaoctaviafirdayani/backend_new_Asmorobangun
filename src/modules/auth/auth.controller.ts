@@ -8,7 +8,7 @@ import type { User } from "../../database/users.repo";
 import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/env";
 import { httpError } from "../../middleware/error";
 import { createLimiter, tooManyMessage } from "../../middleware/rateLimit";
-import { makeUploader } from "../../utils/upload";
+import { makeUploader, uploadedUrl } from "../../utils/upload";
 import { PASSWORD_MSG, PASSWORD_RULES, ONLY_ALNUM, passwordError } from "../../utils/password";
 import { normalizePhone, normalizeEmail, EMAIL_REGEX } from "../../utils/helpers";
 import type { AuthedRequest } from "../../types/auth";
@@ -221,7 +221,7 @@ export async function me(req: Request, res: Response): Promise<void> {
 export async function saveAvatar(req: Request, res: Response): Promise<void> {
   const { user: authUser } = req as AuthedRequest;
   if (!req.file) throw httpError(400, "File foto wajib dipilih.");
-  const newUrl = `/uploads/avatars/${req.file.filename}`;
+  const newUrl = uploadedUrl(req.file, "avatars");
 
   const current = await repo.findById(authUser.id);
   if (!current) throw httpError(404, "User tidak ditemukan.");
