@@ -23,9 +23,26 @@ export interface Db {
 
 let pool: Pool | null = null;
 
+// Error koneksi yang aman untuk diulang satu kali (koneksi putus sebelum query jalan)
+const RETRYABLE = new Set(["ECONNRESET", "PROTOCOL_CONNECTION_LOST", "EPIPE"]);
+
 export function getPool(): Db {
   if (!pool) throw new Error("MySQL belum terhubung. Pastikan initMysql() sudah dipanggil.");
-  return pool as unknown as Db;
+  const p = pool;
+  return {
+    async query(sql: string, params?: unknown[]): Promise<[any, any]> {
+      try {
+        return (await p.query(sql, params as any)) as unknown as [any, any];
+      } catch (e: any) {
+        if (RETRYABLE.has(e?.code)) {
+          // Koneksi mati dibuang pool, ulangi sekali dengan koneksi baru
+          return (await p.query(sql, params as any)) as unknown as [any, any];
+        }
+        throw e;
+      }
+    },
+    getConnection: () => p.getConnection() as unknown as Promise<Conn>,
+  };
 }
 
 export async function initMysql(): Promise<void> {
@@ -36,7 +53,11 @@ export async function initMysql(): Promise<void> {
     password: DB.PASSWORD,
     database: DB.NAME,
     waitForConnections: true,
-    connectionLimit: 5, // hosting gratis biasanya membatasi jumlah koneksi
+    connectionLimit: 10, // dinaikkan agar request Flutter yang paralel tidak berebut
+    maxIdle: 10,
+    idleTimeout: 30000, // buang koneksi idle sebelum MySQL memutusnya
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
     connectTimeout: 15000,
     timezone: "Z", // simpan & baca waktu sebagai UTC
     charset: "utf8mb4",
