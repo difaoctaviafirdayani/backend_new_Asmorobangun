@@ -7,8 +7,8 @@ import { Router } from "express";
 import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { asyncHandler } from "../../middleware/error";
 import { makeUploader } from "../../utils/upload";
-import * as c from "./orders.controller";
-import { orderReview as rv } from "./reviews.controller";
+import * as c from "../../controllers/orders.controller";
+import { orderReview as rv } from "../../controllers/reviews.controller";
 
 const router = Router();
 const uploadProof = makeUploader("payment_proof");

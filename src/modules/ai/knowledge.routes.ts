@@ -5,7 +5,7 @@
 import { Router } from "express";
 import { requireAuth, requireAdmin } from "../../middleware/auth";
 import { asyncHandler } from "../../middleware/error";
-import * as c from "./knowledge.controller";
+import * as c from "../../controllers/knowledge.controller";
 
 const router = Router();
 
