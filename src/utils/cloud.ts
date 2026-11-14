@@ -5,7 +5,7 @@
 // Kalau CLOUDINARY_* belum diisi di .env, upload otomatis jatuh ke MySQL (cara lama).
 // ===========================================================================
 import { v2 as cloudinary } from "cloudinary";
-import { CLOUDINARY } from "../config/env";
+import { CLOUDINARY } from "../config/appConfig";
 
 export const cloudEnabled: boolean = Boolean(CLOUDINARY.CLOUD_NAME && CLOUDINARY.API_KEY && CLOUDINARY.API_SECRET);
 

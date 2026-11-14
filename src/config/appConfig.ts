@@ -1,5 +1,5 @@
 // ===========================================================================
-// KONFIGURASI — semua pembacaan .env ada di sini (satu pintu).
+// APP CONFIG — pengaturan aplikasi. Semua pembacaan file .env ada di sini (satu pintu).
 // ===========================================================================
 import "dotenv/config";
 
@@ -45,9 +45,31 @@ export const PUBLIC_URL: string = (process.env.PUBLIC_URL || "").replace(/\/$/, 
 // true = SEMUA respons selalu berisi URL gambar lengkap (http://...)
 export const ABSOLUTE_URLS: boolean = process.env.ABSOLUTE_URLS === "true";
 
-// AI utama (Gemini) — analisis forum yang hasilnya diverifikasi admin
+// ---------------------------------------------------------------------------
+// AI — pilih SATU penyedia lewat AI_PROVIDER: "gemini" atau "groq".
+// Alamat (URL) API sudah diatur otomatis di llm.service.ts, tidak perlu diisi di .env.
+// Kalau AI_PROVIDER kosong, dipilih otomatis dari API key yang terisi (Groq dulu, lalu Gemini).
+// ---------------------------------------------------------------------------
+export type AiProvider = "gemini" | "groq";
+
 export const GEMINI_API_KEY: string = process.env.GEMINI_API_KEY || "";
 export const GEMINI_MODEL: string = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const GROQ_API_KEY: string = process.env.GROQ_API_KEY || "";
+export const GROQ_MODEL: string = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
+const requestedProvider = (process.env.AI_PROVIDER || "").trim().toLowerCase();
+export const AI_PROVIDER: AiProvider =
+  requestedProvider === "gemini" || requestedProvider === "groq"
+    ? requestedProvider
+    : GROQ_API_KEY
+      ? "groq"
+      : GEMINI_API_KEY
+        ? "gemini"
+        : "groq";
+
+if (requestedProvider && requestedProvider !== "gemini" && requestedProvider !== "groq") {
+  console.warn(`⚠️  AI_PROVIDER="${requestedProvider}" tidak dikenal. Isi dengan "gemini" atau "groq". Dipakai: ${AI_PROVIDER}.`);
+}
 
 // Cloud storage (Cloudinary). Kalau ketiganya diisi, foto & file upload dikirim ke cloud, bukan MySQL.
 export const CLOUDINARY = {
@@ -55,10 +77,6 @@ export const CLOUDINARY = {
   API_KEY: process.env.CLOUDINARY_API_KEY || "",
   API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
 };
+
 // Push notification (Firebase). Isi JSON service account (boleh base64). Kosong = push dimatikan.
 export const FIREBASE_SERVICE_ACCOUNT: string = process.env.FIREBASE_SERVICE_ACCOUNT || "";
-
-// Chatbot topeng (opsional)
-export const AI_API_KEY: string = process.env.AI_API_KEY || "";
-export const AI_BASE_URL: string = process.env.AI_BASE_URL || "https://api.openai.com/v1";
-export const AI_MODEL: string = process.env.AI_MODEL || "gpt-4o-mini";

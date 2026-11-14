@@ -1,11 +1,12 @@
 // =============================================================================
-// AI SERVICE — semua urusan Gemini ada di sini:
+// AI SERVICE — analisis diskusi forum:
 //   1) SYSTEM_PROMPT  : prompt berisi ROLE, CONSTRAINT, dan OUTPUT SCHEMA
-//   2) callGemini()   : memanggil Gemini dari backend (API key tidak pernah ke frontend)
+//   2) generateText() : memanggil AI terpilih (Gemini / Groq) dari backend — lihat llm.service.ts
+//                       (API key tidak pernah dikirim ke frontend)
 //   3) validateAnalysis() : memastikan keluaran AI benar-benar JSON sesuai skema
 // =============================================================================
-import { GEMINI_API_KEY, GEMINI_MODEL } from "../../config/env";
 import { httpError } from "../../middleware/error";
+import { activeModelLabel, generateText } from "./llm.service";
 
 export const SENTIMENTS = ["positif", "netral", "negatif"] as const;
 export const TOPICS = ["kelas_tari", "karawitan", "topeng", "booking", "umum", "lainnya"] as const;
@@ -48,7 +49,7 @@ Kamu adalah "Asisten Moderator Forum" untuk Sanggar Asmorobangun, sanggar seni T
 export const buildUserPrompt = (anonymizedText: string): string =>
   `Analisis diskusi forum berikut.\n<data>\n${anonymizedText}\n</data>`;
 
-// Skema yang dikirim ke Gemini supaya jawabannya dipaksa berbentuk JSON ini.
+// Skema yang dikirim ke Gemini (Groq cukup memakai mode JSON) supaya jawabannya dipaksa berbentuk JSON ini.
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -108,58 +109,28 @@ export function validateAnalysis(raw: string): Validation {
 }
 
 // ----------------------------------------------------------------------------
-// Panggil Gemini (REST). fetchFn bisa diganti saat testing.
+// Panggil AI terpilih -> validasi -> kalau gagal validasi, coba ulang 1x.
+// fetchFn bisa diganti saat testing.
 // ----------------------------------------------------------------------------
-export async function callGemini(userPrompt: string, fetchFn: typeof fetch = fetch): Promise<string> {
-  if (!GEMINI_API_KEY) throw httpError(503, "GEMINI_API_KEY belum diisi di file .env.");
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000); // maksimal 20 detik
-
-  try {
-    const res = await fetchFn(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
-      signal: controller.signal,
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 600,
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-    });
-    const data: any = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("Gemini error status:", res.status); // isi error tidak dikirim ke klien
-      throw httpError(502, `Layanan AI menolak permintaan (kode ${res.status}).`);
-    }
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== "string" || !text.trim()) throw httpError(502, "AI tidak memberikan jawaban.");
-    return text;
-  } catch (err: any) {
-    if (err?.status) throw err; // sudah berupa httpError
-    if (err?.name === "AbortError") throw httpError(504, "AI terlalu lama merespons.");
-    throw httpError(502, "Gagal menghubungi layanan AI.");
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Panggil AI -> validasi -> kalau gagal validasi, coba ulang 1x.
 export async function analyzeText(
   anonymizedText: string,
   fetchFn: typeof fetch = fetch
 ): Promise<{ value: ThreadAnalysis; model: string }> {
   let lastError = "";
   for (let attempt = 1; attempt <= 2; attempt += 1) {
-    const raw = await callGemini(buildUserPrompt(anonymizedText), fetchFn);
+    const raw = await generateText(
+      {
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: buildUserPrompt(anonymizedText) }],
+        temperature: 0.2,
+        maxTokens: 600,
+        json: true,
+        geminiSchema: RESPONSE_SCHEMA,
+      },
+      fetchFn
+    );
     const result = validateAnalysis(raw);
-    if (result.ok) return { value: result.value, model: GEMINI_MODEL };
+    if (result.ok) return { value: result.value, model: activeModelLabel };
     lastError = result.error;
   }
   throw httpError(502, `Keluaran AI tidak sesuai skema (${lastError}).`);

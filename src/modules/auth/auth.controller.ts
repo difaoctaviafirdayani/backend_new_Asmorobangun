@@ -5,7 +5,7 @@ import type { Request, RequestHandler, Response } from "express";
 
 import * as repo from "../../database/users.repo";
 import type { User } from "../../database/users.repo";
-import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/env";
+import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/appConfig";
 import { httpError } from "../../middleware/error";
 import { createLimiter, tooManyMessage } from "../../middleware/rateLimit";
 import { makeUploader, uploadedUrl } from "../../utils/upload";

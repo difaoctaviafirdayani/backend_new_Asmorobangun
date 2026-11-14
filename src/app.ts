@@ -6,7 +6,7 @@ import cors from "cors";
 import path from "path";
 import type { NextFunction, Request, Response } from "express";
 
-import { CORS_ORIGINS, NODE_ENV } from "./config/env";
+import { CORS_ORIGINS, NODE_ENV } from "./config/appConfig";
 import { absoluteUrls } from "./middleware/absoluteUrls";
 import { notFound, errorHandler, asyncHandler } from "./middleware/error";
 import * as media from "./database/media.repo";

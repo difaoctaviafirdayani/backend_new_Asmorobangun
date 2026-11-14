@@ -4,7 +4,7 @@
 // ===========================================================================
 import mysql from "mysql2/promise";
 import type { Pool } from "mysql2/promise";
-import { DB } from "../config/env";
+import { DB } from "../config/appConfig";
 import { readDB } from "./db";
 
 // Bentuk koneksi yang dipakai repository. Hasil query dibuat longgar (any)
@@ -100,7 +100,8 @@ export async function initMysql(): Promise<void> {
   await require("./forum.repo").init();
   await require("./media.repo").init();
   await require("./errorlog.repo").init();
-  await require("./ai.repo").init(); // hasil AI (Gemini) + status verifikasi admin
+  await require("./ai.repo").init(); // hasil AI + status verifikasi admin
+  await require("../models/knowledge.model").init(); // dokumen pengetahuan untuk chatbot
   await require("./push.repo").init(); // token perangkat untuk push notification
   console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }

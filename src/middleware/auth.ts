@@ -4,7 +4,7 @@
 // ===========================================================================
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../config/env";
+import { JWT_SECRET } from "../config/appConfig";
 import { findById, isTokenRevoked } from "../database/users.repo";
 import type { AuthUser } from "../types/auth";
 
