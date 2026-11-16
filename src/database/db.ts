@@ -1,9 +1,11 @@
-// ===========================================================================
+  if (!IS_DEV_ENV) return; // di hosting jangan sentuh db.json
+  // // ===========================================================================
 // DATABASE JSON — data/db.json. Sekarang hanya dipakai sebagai sumber migrasi
 // satu kali ke MySQL (akun, konten, dll). Data utama ada di MySQL.
 // ===========================================================================
 import fs from "fs";
 import path from "path";
+import { IS_DEV_ENV } from "../config/appConfig";
 
 export const DB_PATH = path.join(__dirname, "..", "..", "data", "db.json");
 
@@ -14,6 +16,8 @@ const DEFAULT_ARRAYS = [
 ];
 
 export function readDB(): any {
+  // db.json berisi data developer: tidak boleh dibaca di staging/production.
+  if (!IS_DEV_ENV) throw new Error("db.json hanya dipakai di environment development.");
   return JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
 }
 

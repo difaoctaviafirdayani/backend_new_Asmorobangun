@@ -6,7 +6,20 @@ import "dotenv/config";
 const DEFAULT_SECRET = "asmorobangun-dev-secret-change-me";
 
 export const NODE_ENV: string = process.env.NODE_ENV || "development";
+// Environment aplikasi: development (laptop), staging (branch developer), production (branch main).
+// Di Vercel, NODE_ENV selalu "production" (termasuk preview), jadi staging WAJIB diisi APP_ENV=staging.
+export type AppEnv = "development" | "staging" | "production";
+const rawAppEnv = (process.env.APP_ENV || (NODE_ENV === "production" ? "production" : "development")).trim().toLowerCase();
+export const APP_ENV: AppEnv = rawAppEnv === "production" || rawAppEnv === "staging" ? rawAppEnv : "development";
+export const IS_DEV_ENV: boolean = APP_ENV === "development";
 
+// Pagar untuk skrip data contoh (mis. 500 data): panggil di baris pertama skripnya.
+export function assertDevOnly(what: string): void {
+  if (!IS_DEV_ENV) {
+    console.error(`DIBATALKAN: ${what} hanya boleh jalan di APP_ENV=development (sekarang: ${APP_ENV}).`);
+    process.exit(1);
+  }
+}
 // Secret dianggap LEMAH kalau kosong, bawaan, terlalu pendek, atau masih placeholder "ISI_...".
 const rawSecret = process.env.JWT_SECRET || "";
 const JWT_IS_WEAK = !rawSecret || rawSecret === DEFAULT_SECRET || rawSecret.length < 32 || /^ISI_/i.test(rawSecret);
