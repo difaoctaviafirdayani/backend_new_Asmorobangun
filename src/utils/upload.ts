@@ -51,7 +51,7 @@ const KINDS: Kind[] = ["jpg", "png", "webp", "gif", "pdf"];
 export function makeUploader(
   subfolder: string,
   allowed: RegExp = /^\.(jpe?g|png|webp|gif|pdf)$/i
-): { single: (field: string) => RequestHandler[] } {
+): { single: (field: string) => RequestHandler[]; multiple: (field: string, max: number) => RequestHandler[] } {
   const formatMessage = (): string => {
     const names = KINDS.filter((k) => allowed.test("." + k)).map((k) => k.toUpperCase());
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")}, atau ${names[names.length - 1]}` : names.join("");
@@ -67,36 +67,72 @@ export function makeUploader(
     },
   });
 
-  // Setelah multer membaca file, kirim ke cloud (atau MySQL kalau cloud belum diatur) dan isi req.file.filename.
+  // Kirim satu file ke cloud (atau MySQL kalau cloud belum diatur) dan isi file.filename.
+  const persistFile = async (file: Express.Multer.File): Promise<void> => {
+    // Isi file harus benar-benar format yang diizinkan. Kalau tidak, TOLAK dan jangan simpan.
+    const kind = sniff(file.buffer);
+    if (!kind || !allowed.test("." + kind)) throw httpError(400, formatMessage());
+
+    const filename = `${Date.now()}-${nanoid(8)}.${kind}`;
+    if (cloudEnabled) {
+      try {
+        file.cloudUrl = await uploadToCloud(subfolder, filename, kind, file.buffer);
+      } catch (e: any) {
+        console.error("Upload ke Cloudinary gagal:", e && e.message ? e.message : e);
+        throw httpError(502, "Gagal mengunggah ke penyimpanan cloud. Coba lagi sebentar.");
+      }
+    } else {
+      await media.save(subfolder, filename, file.buffer);
+    }
+    file.filename = filename;
+  };
+
+  const fixError = (err: any): any => {
+    if (err && err.code === "ER_NET_PACKET_TOO_LARGE") {
+      err.status = 413;
+      err.message = "File terlalu besar untuk MySQL (max_allowed_packet). Perkecil ukuran foto.";
+    }
+    return err;
+  };
+
   const persist = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.file) return next();
     try {
-      // Isi file harus benar-benar format yang diizinkan. Kalau tidak, TOLAK dan jangan simpan.
-      const kind = sniff(req.file.buffer);
-      if (!kind || !allowed.test("." + kind)) throw httpError(400, formatMessage());
-
-      const filename = `${Date.now()}-${nanoid(8)}.${kind}`;
-      if (cloudEnabled) {
-        try {
-          req.file.cloudUrl = await uploadToCloud(subfolder, filename, kind, req.file.buffer);
-        } catch (e: any) {
-          console.error("Upload ke Cloudinary gagal:", e && e.message ? e.message : e);
-          throw httpError(502, "Gagal mengunggah ke penyimpanan cloud. Coba lagi sebentar.");
-        }
-      } else {
-        await media.save(subfolder, filename, req.file.buffer);
-      }
-      req.file.filename = filename;
+      await persistFile(req.file);
       next();
     } catch (err: any) {
-      if (err.code === "ER_NET_PACKET_TOO_LARGE") {
-        err.status = 413;
-        err.message = "File terlalu besar untuk MySQL (max_allowed_packet). Perkecil ukuran foto.";
-      }
-      next(err);
+      next(fixError(err));
     }
   };
 
-  // Dipakai di route seperti sebelumnya: uploader.single("image")
-  return { single: (field) => [parser.single(field), persist as RequestHandler] };
+  // Untuk banyak file: semua dicek isinya DULU, baru diunggah, jadi file palsu tidak menyisakan unggahan sebagian.
+  const persistMany = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (!files.length) return next();
+    try {
+      for (const f of files) {
+        const kind = sniff(f.buffer);
+        if (!kind || !allowed.test("." + kind)) throw httpError(400, formatMessage());
+      }
+      for (const f of files) await persistFile(f);
+      next();
+    } catch (err: any) {
+      next(fixError(err));
+    }
+  };
+
+  // Multer melempar LIMIT_UNEXPECTED_FILE kalau file melebihi batas: ubah jadi pesan yang jelas.
+  const many = (field: string, max: number): RequestHandler => (req, res, next) => {
+    parser.array(field, max)(req, res, (err?: any) => {
+      if (err && err.code === "LIMIT_UNEXPECTED_FILE") return next(httpError(400, `Maksimal ${max} foto.`));
+      if (err && err.code === "LIMIT_FILE_SIZE") return next(httpError(400, "Ukuran foto maksimal 8 MB per file."));
+      next(err);
+    });
+  };
+
+  // Dipakai di route: uploader.single("image") atau uploader.multiple("images", 5)
+  return {
+    single: (field) => [parser.single(field), persist as RequestHandler],
+    multiple: (field, max) => [many(field, max), persistMany as RequestHandler],
+  };
 }

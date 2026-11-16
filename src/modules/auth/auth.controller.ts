@@ -9,14 +9,24 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from "../../config/env";
 import { httpError } from "../../middleware/error";
 import { createLimiter, tooManyMessage } from "../../middleware/rateLimit";
 import { makeUploader, uploadedUrl } from "../../utils/upload";
-import { PASSWORD_MSG, PASSWORD_RULES, ONLY_ALNUM, passwordError } from "../../utils/password";
-import { normalizePhone, normalizeEmail, EMAIL_REGEX } from "../../utils/helpers";
+import {
+  PASSWORD_MSG,
+  PASSWORD_RULES,
+  ONLY_ALNUM,
+  passwordError,
+} from "../../utils/password";
+import {
+  normalizePhone,
+  normalizeEmail,
+  EMAIL_REGEX,
+} from "../../utils/helpers";
 import type { AuthedRequest } from "../../types/auth";
 
 // Batas percobaan: 8x salah login / 5x salah lupa-password per 15 menit (per IP + email)
 const loginLimiter = createLimiter({ windowMs: 15 * 60 * 1000, max: 8 });
 const resetLimiter = createLimiter({ windowMs: 15 * 60 * 1000, max: 5 });
-const limiterKey = (req: Request, email: string): string => `${req.ip}|${email}`;
+const limiterKey = (req: Request, email: string): string =>
+  `${req.ip}|${email}`;
 
 // ---------- Helper ----------
 function publicUser(u: User): Omit<User, "password" | "tokenVersion"> {
@@ -24,18 +34,31 @@ function publicUser(u: User): Omit<User, "password" | "tokenVersion"> {
   return rest;
 }
 
-function signToken(user: Pick<User, "id" | "name" | "email" | "role"> & { tokenVersion?: number }): string {
+function signToken(
+  user: Pick<User, "id" | "name" | "email" | "role"> & {
+    tokenVersion?: number;
+  },
+): string {
   return jwt.sign(
-    { id: user.id, name: user.name, email: user.email, role: user.role, tv: user.tokenVersion || 0 },
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      tv: user.tokenVersion || 0,
+    },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN },
   );
 }
 
 // ---------- Foto profil ----------
 // Disimpan di MySQL (tabel media_files), BUKAN di disk -> aman untuk Vercel (disk read-only).
 // Hanya JPG/PNG/WEBP, maksimal 8MB.
-export const uploadAvatar: RequestHandler[] = makeUploader("avatars", /^\.(jpe?g|png|webp)$/i).single("avatar");
+export const uploadAvatar: RequestHandler[] = makeUploader(
+  "avatars",
+  /^\.(jpe?g|png|webp)$/i,
+).single("avatar");
 
 // ---------- Handler ----------
 
@@ -57,9 +80,13 @@ export async function register(req: Request, res: Response): Promise<void> {
   if (displayName.length < 2 || displayName.length > 60) {
     throw httpError(400, "Nama harus 2-60 karakter.");
   }
-  if (!EMAIL_REGEX.test(email)) throw httpError(400, "Format email tidak valid.");
+  if (!EMAIL_REGEX.test(email))
+    throw httpError(400, "Format email tidak valid.");
   if (cleanPhone.length < 9 || cleanPhone.length > 15) {
-    throw httpError(400, "Nomor HP wajib diisi dengan benar (dipakai untuk verifikasi lupa password).");
+    throw httpError(
+      400,
+      "Nomor HP wajib diisi dengan benar (dipakai untuk verifikasi lupa password).",
+    );
   }
   const pwErr = passwordError(password);
   if (pwErr) throw httpError(400, pwErr);
@@ -82,7 +109,10 @@ export async function register(req: Request, res: Response): Promise<void> {
     await repo.createUser(user);
   } catch (err: any) {
     if (err.code === "ER_DUP_ENTRY") {
-      throw httpError(409, "Email sudah terdaftar. Silakan login atau gunakan lupa password.");
+      throw httpError(
+        409,
+        "Email sudah terdaftar. Silakan login atau gunakan lupa password.",
+      );
     }
     throw err;
   }
@@ -94,7 +124,8 @@ export async function register(req: Request, res: Response): Promise<void> {
 export async function login(req: Request, res: Response): Promise<void> {
   const email = normalizeEmail(req.body.email);
   const { password } = req.body;
-  if (!email || !password) throw httpError(400, "Email dan password wajib diisi.");
+  if (!email || !password)
+    throw httpError(400, "Email dan password wajib diisi.");
 
   const key = limiterKey(req, email);
   const wait = loginLimiter.blockedFor(key);
@@ -128,7 +159,10 @@ export async function logout(req: Request, res: Response): Promise<void> {
 // POST /api/auth/reset-password   — LUPA PASSWORD
 // Body: { email, phone, newPassword, confirmPassword? }
 // Akun hanya bisa direset kalau email DAN nomor HP cocok dengan data saat daftar.
-export async function resetPassword(req: Request, res: Response): Promise<void> {
+export async function resetPassword(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const email = normalizeEmail(req.body.email);
   const { phone, newPassword, confirmPassword } = req.body;
   if (!email || !phone || !newPassword) {
@@ -137,7 +171,10 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   const pwErr = passwordError(newPassword);
   if (pwErr) throw httpError(400, pwErr);
   if (confirmPassword !== undefined && confirmPassword !== newPassword) {
-    throw httpError(400, "Konfirmasi password tidak sama dengan password baru.");
+    throw httpError(
+      400,
+      "Konfirmasi password tidak sama dengan password baru.",
+    );
   }
 
   const key = limiterKey(req, email);
@@ -147,12 +184,20 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   const GENERIC = "Email atau nomor HP tidak cocok dengan data akun.";
   const user = await repo.findByEmail(email);
   const savedPhone = user ? normalizePhone(user.phone) : "";
-  if (!user || user.role === "admin" || !savedPhone || savedPhone !== normalizePhone(phone)) {
+  if (
+    !user ||
+    user.role === "admin" ||
+    !savedPhone ||
+    savedPhone !== normalizePhone(phone)
+  ) {
     resetLimiter.fail(key);
     throw httpError(400, GENERIC);
   }
   if (await bcrypt.compare(String(newPassword), user.password)) {
-    throw httpError(400, "Password baru tidak boleh sama dengan password lama.");
+    throw httpError(
+      400,
+      "Password baru tidak boleh sama dengan password lama.",
+    );
   }
 
   const hashed = await bcrypt.hash(newPassword, 10);
@@ -167,7 +212,10 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 
 // POST /api/auth/change-password   — ganti password saat sudah login
 // Body: { currentPassword, newPassword, confirmPassword? }
-export async function changePassword(req: Request, res: Response): Promise<void> {
+export async function changePassword(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const { user: authUser } = req as AuthedRequest;
   const { currentPassword, newPassword, confirmPassword } = req.body;
   if (!currentPassword || !newPassword) {
@@ -176,7 +224,10 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   const pwErr = passwordError(newPassword);
   if (pwErr) throw httpError(400, pwErr);
   if (confirmPassword !== undefined && confirmPassword !== newPassword) {
-    throw httpError(400, "Konfirmasi password tidak sama dengan password baru.");
+    throw httpError(
+      400,
+      "Konfirmasi password tidak sama dengan password baru.",
+    );
   }
 
   const key = limiterKey(req, `chg:${authUser.id}`);
@@ -190,7 +241,10 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     throw httpError(400, "Password lama salah.");
   }
   if (currentPassword === newPassword) {
-    throw httpError(400, "Password baru tidak boleh sama dengan password lama.");
+    throw httpError(
+      400,
+      "Password baru tidak boleh sama dengan password lama.",
+    );
   }
 
   const hashed = await bcrypt.hash(newPassword, 10);

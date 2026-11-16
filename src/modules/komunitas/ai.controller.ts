@@ -34,11 +34,15 @@ ke menu terkait di aplikasi (Fasilitas, Forum, dsb). Selalu jawab dalam Bahasa I
 
 async function catalogSummary(): Promise<string> {
   return (await topeng.list())
-    .map((t) => `- ${t.name} (${t.character}, warna ${t.color}): Rp ${Number(t.price).toLocaleString("id-ID")}, dibuat sesuai pesanan`)
+    .map(
+      (t) =>
+        `- ${t.name} (${t.character}, warna ${t.color}): Rp ${Number(t.price).toLocaleString("id-ID")}, dibuat sesuai pesanan`,
+    )
     .join("\n");
 }
 
-const OFF_TOPIC = /(kelas tari|karawitan|jadwal kelas|sewa kostum|panggilan tari|kunjungan edukasi|booking|daftar kelas|forum diskusi|login|register|artikel|berita sanggar)/i;
+const OFF_TOPIC =
+  /(kelas tari|karawitan|jadwal kelas|sewa kostum|panggilan tari|kunjungan edukasi|booking|daftar kelas|forum diskusi|login|register|artikel|berita sanggar)/i;
 
 // Jawaban berbasis aturan supaya asisten tetap jalan tanpa konfigurasi / tanpa API key.
 async function ruleBasedAnswer(message: string): Promise<string> {
@@ -79,7 +83,8 @@ export async function chat(req: Request, res: Response): Promise<void> {
   const message = String(req.body.message || "").trim();
   const { history } = req.body;
   if (!message) throw httpError(400, "Pesan tidak boleh kosong.");
-  if (message.length > 1000) throw httpError(400, "Pesan terlalu panjang (maksimal 1000 karakter).");
+  if (message.length > 1000)
+    throw httpError(400, "Pesan terlalu panjang (maksimal 1000 karakter).");
 
   const ip = req.ip || "unknown";
   const wait = chatLimiter.blockedFor(ip);
@@ -90,42 +95,64 @@ export async function chat(req: Request, res: Response): Promise<void> {
   const guarded = prepareForPrompt(message, { maxLen: 1000 });
   if (guarded.injection.flagged) {
     res.json({
-      reply: "Maaf, pesan itu tidak bisa aku proses. Aku hanya bisa membantu seputar Topeng Malangan ya 🎭",
+      reply:
+        "Maaf, pesan itu tidak bisa aku proses. Aku hanya bisa membantu seputar Topeng Malangan ya 🎭",
       mode: "blocked",
     });
     return;
   }
 
   if (!AI_API_KEY) {
-    res.json({ reply: await ruleBasedAnswer(guarded.text), mode: "rule-based" });
+    res.json({
+      reply: await ruleBasedAnswer(guarded.text),
+      mode: "rule-based",
+    });
     return;
   }
 
   try {
     const safeHistory: ChatMessage[] = (Array.isArray(history) ? history : [])
-      .filter((h: any) => h && ["user", "assistant"].includes(h.role) && typeof h.content === "string")
+      .filter(
+        (h: any) =>
+          h &&
+          ["user", "assistant"].includes(h.role) &&
+          typeof h.content === "string",
+      )
       .slice(-10)
-      .map((h: any) => ({ role: h.role as "user" | "assistant", prepared: prepareForPrompt(h.content, { maxLen: 1000 }) }))
+      .map((h: any) => ({
+        role: h.role as "user" | "assistant",
+        prepared: prepareForPrompt(h.content, { maxLen: 1000 }),
+      }))
       .filter((h) => !h.prepared.injection.flagged) // riwayat yang mengandung injection dibuang
       .map((h) => ({ role: h.role, content: h.prepared.text }));
 
     const messages: ChatMessage[] = [
-      { role: "system", content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${await catalogSummary()}` },
+      {
+        role: "system",
+        content: `${SYSTEM_CONTEXT}\n\nData katalog topeng saat ini:\n${await catalogSummary()}`,
+      },
       ...safeHistory,
       { role: "user", content: guarded.text },
     ];
 
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${AI_API_KEY}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${AI_API_KEY}`,
+      },
       body: JSON.stringify({ model: AI_MODEL, messages, max_tokens: 500 }),
     });
     const data: any = await response.json();
-    const text: string | undefined = data.choices?.[0]?.message?.content?.trim();
+    const text: string | undefined =
+      data.choices?.[0]?.message?.content?.trim();
     if (!text) throw new Error("Respons AI kosong");
     res.json({ reply: text, mode: "openai-compatible" });
   } catch (err: any) {
     console.error("AI error:", err.message);
-    res.json({ reply: await ruleBasedAnswer(guarded.text), mode: "rule-based-fallback" });
+    res.json({
+      reply: await ruleBasedAnswer(guarded.text),
+      mode: "rule-based-fallback",
+    });
   }
 }

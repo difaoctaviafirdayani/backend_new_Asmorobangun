@@ -6,7 +6,12 @@
 // ===========================================================================
 import type { Request, Response } from "express";
 import { nanoid } from "nanoid";
-import { reviews, topengReviews } from "../../database/layanan.repo";
+import {
+  imagesPatch,
+  reviews,
+  topengReviews,
+} from "../../database/layanan.repo";
+import { MAX_REVIEW_IMAGES } from "../../config/rules";
 import { bookings, orders } from "../../database/registrasi.repo";
 import { httpError } from "../../middleware/error";
 import { uploadedUrl } from "../../utils/upload";
@@ -24,7 +29,11 @@ interface Adapter {
   insert(review: Row): Promise<void>;
   patch(id: string, changes: Row): Promise<void>;
   remove(id: string): Promise<void>;
-  newRecord(source: Row, user: { id: string; name: string }, data: { rating: number; comment: string }): Row;
+  newRecord(
+    source: Row,
+    user: { id: string; name: string },
+    data: { rating: number; comment: string },
+  ): Row;
 }
 
 const bookingAdapter: Adapter = {
@@ -70,9 +79,11 @@ const orderAdapter: Adapter = {
 function parseInput(body: Row): { rating: number; comment: string } {
   const rating = Math.round(Number(body.rating));
   const comment = String(body.comment ?? "").trim();
-  if (!Number.isFinite(rating) || rating < 1 || rating > 5) throw httpError(400, "Pilih rating 1 sampai 5 bintang.");
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5)
+    throw httpError(400, "Pilih rating 1 sampai 5 bintang.");
   if (comment.length < 3) throw httpError(400, "Komentar minimal 3 karakter.");
-  if (comment.length > 500) throw httpError(400, "Komentar maksimal 500 karakter.");
+  if (comment.length > 500)
+    throw httpError(400, "Komentar maksimal 500 karakter.");
   return { rating, comment };
 }
 
@@ -100,9 +111,13 @@ function make(a: Adapter) {
       const { user } = req as AuthedRequest;
       const src = await ownedSource(a, req);
       if (src.status !== "selesai") {
-        throw httpError(400, `Ulasan hanya bisa ditulis setelah ${a.label} berstatus selesai.`);
+        throw httpError(
+          400,
+          `Ulasan hanya bisa ditulis setelah ${a.label} berstatus selesai.`,
+        );
       }
-      if (await a.findReview(src.id)) throw httpError(409, "Kamu sudah mengulas ini. Silakan edit ulasanmu.");
+      if (await a.findReview(src.id))
+        throw httpError(409, "Kamu sudah mengulas ini. Silakan edit ulasanmu.");
       const record = a.newRecord(src, user, parseInput(req.body));
       await a.insert(record);
       res.status(201).json({ review: await a.findReview(src.id) });
@@ -127,23 +142,71 @@ function make(a: Adapter) {
       res.json({ message: "Ulasan dihapus." });
     },
 
-    // POST .../review/image  (multipart, field: image)  -> foto opsional untuk ulasan
-    async setImage(req: Request, res: Response): Promise<void> {
+    // PUT .../review/images  (multipart: images[] baru + keep = JSON array URL lama yang dipertahankan)
+    // Hasil akhir = foto lama yang dipertahankan + foto baru, maksimal 5.
+    async setImages(req: Request, res: Response): Promise<void> {
       const src = await ownedSource(a, req);
       const existing = await a.findReview(src.id);
-      if (!existing) throw httpError(404, "Kirim ulasan dulu sebelum menambah foto.");
-      if (!(req as any).file) throw httpError(400, "File foto wajib diunggah.");
-      const image = uploadedUrl((req as any).file, "review");
-      await a.patch(existing.id, { image });
+      if (!existing)
+        throw httpError(404, "Kirim ulasan dulu sebelum menambah foto.");
+
+      const current: string[] = Array.isArray(existing.images)
+        ? existing.images
+        : [];
+      let keep: string[] = current;
+      if (req.body && req.body.keep !== undefined) {
+        let parsed: unknown;
+        try {
+          parsed =
+            typeof req.body.keep === "string"
+              ? JSON.parse(req.body.keep)
+              : req.body.keep;
+        } catch {
+          throw httpError(400, "Daftar foto yang dipertahankan tidak valid.");
+        }
+        if (!Array.isArray(parsed))
+          throw httpError(400, "Daftar foto yang dipertahankan tidak valid.");
+        // Hanya foto yang memang sudah ada di ulasan ini yang boleh dipertahankan.
+        keep = parsed.map(String).filter((u) => current.includes(u));
+      }
+
+      const files: Express.Multer.File[] = Array.isArray((req as any).files)
+        ? (req as any).files
+        : [];
+      const added = files.map((f) => uploadedUrl(f, "review"));
+      const images = [...new Set([...keep, ...added])];
+      if (images.length > MAX_REVIEW_IMAGES)
+        throw httpError(400, `Maksimal ${MAX_REVIEW_IMAGES} foto per ulasan.`);
+
+      await a.patch(existing.id, imagesPatch(images));
       res.json({ review: await a.findReview(src.id) });
     },
 
-    // DELETE .../review/image
+    // POST .../review/image  (lama, satu foto)  -> menambah satu foto, tetap dibatasi 5
+    async setImage(req: Request, res: Response): Promise<void> {
+      const src = await ownedSource(a, req);
+      const existing = await a.findReview(src.id);
+      if (!existing)
+        throw httpError(404, "Kirim ulasan dulu sebelum menambah foto.");
+      if (!(req as any).file) throw httpError(400, "File foto wajib diunggah.");
+      const current: string[] = Array.isArray(existing.images)
+        ? existing.images
+        : [];
+      if (current.length >= MAX_REVIEW_IMAGES)
+        throw httpError(400, `Maksimal ${MAX_REVIEW_IMAGES} foto per ulasan.`);
+      await a.patch(
+        existing.id,
+        imagesPatch([...current, uploadedUrl((req as any).file, "review")]),
+      );
+      res.json({ review: await a.findReview(src.id) });
+    },
+
+    // DELETE .../review/image  -> hapus semua foto ulasan
     async clearImage(req: Request, res: Response): Promise<void> {
       const src = await ownedSource(a, req);
       const existing = await a.findReview(src.id);
       if (!existing) throw httpError(404, "Ulasan belum ada.");
-      await a.patch(existing.id, { image: null });
+      await a.patch(existing.id, imagesPatch([]));
       res.json({ review: await a.findReview(src.id) });
     },
   };

@@ -108,7 +108,7 @@ export async function init(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS forum_threads (
       id        VARCHAR(30)  NOT NULL PRIMARY KEY,
-      category  VARCHAR(100) NOT NULL DEFAULT 'Diskusi Umum',
+      category  VARCHAR(100) NOT NULL DEFAULT 'Umum',
       title     VARCHAR(255) NOT NULL,
       user_id   VARCHAR(30)  NULL,
       user_name VARCHAR(100) NOT NULL,
