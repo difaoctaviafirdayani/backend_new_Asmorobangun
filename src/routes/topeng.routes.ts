@@ -3,9 +3,9 @@
 // (pesanan topeng ada di modules/registrasi/orders.routes.ts)
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import * as c from "../../controllers/topeng.controller";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import * as c from "../controllers/topeng.controller";
 
 const router = Router();
 

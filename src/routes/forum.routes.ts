@@ -2,9 +2,9 @@
 // KOMUNITAS › FORUM DISKUSI        Base URL: /api/forum
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import * as c from "../../controllers/forum.controller";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import * as c from "../controllers/forum.controller";
 
 const router = Router();
 

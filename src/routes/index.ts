@@ -4,26 +4,26 @@
 // ===========================================================================
 import { Router } from "express";
 
-import authRoutes from "./modules/auth/auth.routes";
-import bookingsRoutes from "./modules/registrasi/bookings.routes";
-import ordersRoutes from "./modules/registrasi/orders.routes";
-import paymentsRoutes from "./modules/registrasi/payments.routes";
-import facilitiesRoutes from "./modules/layanan/facilities.routes";
-import topengRoutes from "./modules/layanan/topeng.routes";
-import articlesRoutes from "./modules/informasi/articles.routes";
-import announcementsRoutes from "./modules/informasi/announcements.routes";
-import galleryRoutes from "./modules/informasi/gallery.routes";
-import cultureRoutes from "./modules/informasi/culture.routes";
-import faqsRoutes from "./modules/informasi/faqs.routes";
-import forumRoutes from "./modules/komunitas/forum.routes";
-import searchRoutes from "./modules/komunitas/search.routes";
-import chatbotRoutes from "./modules/komunitas/ai.routes";
-import analysisRoutes from "./modules/ai/analysis.routes";
-import notificationsRoutes from "./modules/notifications/notifications.routes";
-import statsRoutes from "./modules/admin/stats.routes";
-import uploadsRoutes from "./modules/admin/uploads.routes";
-import logsRoutes from "./modules/admin/logs.routes";
-import knowledgeRoutes from "./modules/ai/knowledge.routes";
+import authRoutes from "./auth.routes";
+import bookingsRoutes from "./bookings.routes";
+import ordersRoutes from "./orders.routes";
+import paymentsRoutes from "./payments.routes";
+import facilitiesRoutes from "./facilities.routes";
+import topengRoutes from "./topeng.routes";
+import articlesRoutes from "./articles.routes";
+import announcementsRoutes from "./announcements.routes";
+import galleryRoutes from "./gallery.routes";
+import cultureRoutes from "./culture.routes";
+import faqsRoutes from "./faqs.routes";
+import forumRoutes from "./forum.routes";
+import searchRoutes from "./search.routes";
+import chatbotRoutes from "./ai.routes";
+import analysisRoutes from "./analysis.routes";
+import notificationsRoutes from "./notifications.routes";
+import statsRoutes from "./stats.routes";
+import uploadsRoutes from "./uploads.routes";
+import logsRoutes from "./logs.routes";
+import knowledgeRoutes from "./knowledge.routes";
 
 const router = Router();
 

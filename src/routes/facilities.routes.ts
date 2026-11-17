@@ -2,9 +2,9 @@
 // LAYANAN › FASILITAS / KELAS + ULASAN        Base URL: /api/facilities
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import * as c from "../../controllers/facilities.controller";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import * as c from "../controllers/facilities.controller";
 
 const router = Router();
 

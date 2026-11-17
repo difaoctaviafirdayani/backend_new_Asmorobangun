@@ -2,8 +2,8 @@
 // KOMUNITAS › ASISTEN TOPENG (chatbot)        Base URL: /api/ai
 // ===========================================================================
 import { Router } from "express";
-import { asyncHandler } from "../../middleware/error";
-import * as c from "../../controllers/ai.controller";
+import { asyncHandler } from "../middleware/error";
+import * as c from "../controllers/ai.controller";
 
 const router = Router();
 

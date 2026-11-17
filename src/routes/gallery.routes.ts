@@ -2,9 +2,9 @@
 // INFORMASI › GALERI        Base URL: /api/gallery
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import * as c from "../../controllers/gallery.controller";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import * as c from "../controllers/gallery.controller";
 
 const router = Router();
 

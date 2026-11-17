@@ -4,8 +4,8 @@
 // File dikirim ke Cloudinary (kalau aktif), URL yang dikembalikan disimpan di database.
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { makeUploader, uploadedUrl } from "../../utils/upload";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { makeUploader, uploadedUrl } from "../utils/upload";
 
 const router = Router();
 const uploadImage = makeUploader("site_images");

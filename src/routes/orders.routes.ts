@@ -4,12 +4,12 @@
 // Dipasang SEBELUM katalog topeng supaya "/orders" tidak tertukar dengan "/:id".
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import { makeUploader } from "../../utils/upload";
-import { MAX_REVIEW_IMAGES } from "../../config/rules";
-import * as c from "../../controllers/orders.controller";
-import { orderReview as rv } from "../../controllers/reviews.controller";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import { makeUploader } from "../utils/upload";
+import { MAX_REVIEW_IMAGES } from "../config/rules";
+import * as c from "../controllers/orders.controller";
+import { orderReview as rv } from "../controllers/reviews.controller";
 
 const router = Router();
 const uploadProof = makeUploader("payment_proof");

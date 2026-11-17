@@ -2,11 +2,11 @@
 // KOMUNITAS › PENCARIAN        Base URL: /api/search?q=
 // ===========================================================================
 import { Router } from "express";
-import { facilities, topeng } from "../../database/layanan.repo";
-import { threads } from "../../database/forum.repo";
-import { articles } from "../../database/content.repo";
-import { asyncHandler } from "../../middleware/error";
-import { lower } from "../../utils/helpers";
+import { facilities, topeng } from "../database/layanan.repo";
+import { threads } from "../database/forum.repo";
+import { articles } from "../database/content.repo";
+import { asyncHandler } from "../middleware/error";
+import { lower } from "../utils/helpers";
 
 const router = Router();
 

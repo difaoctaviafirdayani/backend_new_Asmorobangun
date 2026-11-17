@@ -6,10 +6,10 @@
 //   DELETE /logs        hapus semua catatan                       (admin)
 // ===========================================================================
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
-import { asyncHandler } from "../../middleware/error";
-import { createLimiter } from "../../middleware/rateLimit";
-import * as logs from "../../database/errorlog.repo";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { asyncHandler } from "../middleware/error";
+import { createLimiter } from "../middleware/rateLimit";
+import * as logs from "../database/errorlog.repo";
 
 const router = Router();
 const limiter = createLimiter({ windowMs: 60 * 1000, max: 30 }); // maks 30 laporan / menit / IP
