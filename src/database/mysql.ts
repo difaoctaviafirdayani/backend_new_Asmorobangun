@@ -1,10 +1,11 @@
 // ===========================================================================
-// MYSQL — koneksi ke MySQL di web, pembuatan tabel otomatis, dan migrasi akun lama.
+// MYSQL / TiDB — koneksi database, pembuatan tabel otomatis, dan migrasi akun lama.
+// Development: MySQL lokal. Staging/Production: TiDB Cloud (wajib TLS, DB_SSL=true).
 // Database harus sudah dibuat dari panel hosting (phpMyAdmin / dashboard).
 // ===========================================================================
 import mysql from "mysql2/promise";
 import type { Pool } from "mysql2/promise";
-import { DB } from "../config/env";
+import { DB, IS_DEV_ENV } from "../config/appConfig";
 import { readDB } from "./db";
 
 // Bentuk koneksi yang dipakai repository. Hasil query dibuat longgar (any)
@@ -23,13 +24,11 @@ export interface Db {
 
 let pool: Pool | null = null;
 
+// Error koneksi yang aman untuk diulang satu kali (koneksi putus sebelum query jalan)
 const RETRYABLE = new Set(["ECONNRESET", "PROTOCOL_CONNECTION_LOST", "EPIPE"]);
 
 export function getPool(): Db {
-  if (!pool)
-    throw new Error(
-      "MySQL belum terhubung. Pastikan initMysql() sudah dipanggil.",
-    );
+  if (!pool) throw new Error("MySQL belum terhubung. Pastikan initMysql() sudah dipanggil.");
   const p = pool;
   return {
     async query(sql: string, params?: unknown[]): Promise<[any, any]> {
@@ -37,6 +36,7 @@ export function getPool(): Db {
         return (await p.query(sql, params as any)) as unknown as [any, any];
       } catch (e: any) {
         if (RETRYABLE.has(e?.code)) {
+          // Koneksi mati dibuang pool, ulangi sekali dengan koneksi baru
           return (await p.query(sql, params as any)) as unknown as [any, any];
         }
         throw e;
@@ -47,6 +47,11 @@ export function getPool(): Db {
 }
 
 export async function initMysql(): Promise<void> {
+  // Di laptop pool besar supaya request Flutter yang paralel tidak berebut.
+  // Di hosting (Vercel serverless) tiap instance punya pool sendiri, jadi dibuat kecil
+  // supaya jumlah koneksi ke TiDB tidak membengkak.
+  const poolSize = IS_DEV_ENV ? 10 : 3;
+
   pool = mysql.createPool({
     host: DB.HOST,
     port: DB.PORT,
@@ -54,15 +59,17 @@ export async function initMysql(): Promise<void> {
     password: DB.PASSWORD,
     database: DB.NAME,
     waitForConnections: true,
-    connectionLimit: 10,
-    maxIdle: 10,
-    idleTimeout: 30000,
+    connectionLimit: poolSize,
+    maxIdle: poolSize,
+    idleTimeout: 30000, // buang koneksi idle sebelum server memutusnya (TiDB: idle 340 detik)
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
     connectTimeout: 15000,
     timezone: "Z",
     charset: "utf8mb4",
-    ssl: DB.SSL ? { rejectUnauthorized: false } : undefined,
+    // TiDB Cloud wajib TLS. Sertifikatnya dari CA publik, jadi boleh diverifikasi penuh.
+    // Kalau gagal karena sertifikat, sementara ganti jadi { rejectUnauthorized: false }.
+    ssl: DB.SSL ? { minVersion: "TLSv1.2", rejectUnauthorized: true } : undefined,
   });
   const db = getPool();
 
@@ -101,15 +108,20 @@ export async function initMysql(): Promise<void> {
   await require("./forum.repo").init();
   await require("./media.repo").init();
   await require("./errorlog.repo").init();
-  await require("./ai.repo").init(); // hasil AI (Gemini) + status verifikasi admin
+  await require("./ai.repo").init(); // hasil AI + status verifikasi admin
+  await require("../models/knowledge.model").init(); // dokumen pengetahuan untuk chatbot
   await require("./push.repo").init(); // token perangkat untuk push notification
   await require("./notifications.repo").init();
   await require("./migrations").runDataMigrations();
-  console.log(`MySQL terhubung: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
+  console.log(`Database terhubung [${IS_DEV_ENV ? "development" : "hosting"}]: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 
-// Pindahkan akun dari data/db.json ke MySQL (hanya jika tabel users masih kosong).
+// Pindahkan akun dari data/db.json ke database (hanya jika tabel users masih kosong).
+// HANYA di development: data db.json adalah data developer dan tidak boleh masuk
+// ke staging/production. Admin production dibuat lewat: npm run create:admin
 async function migrateUsersFromJson(): Promise<void> {
+  if (!IS_DEV_ENV) return;
+
   const db = getPool();
   const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM users");
   if (total > 0) return;
@@ -142,5 +154,5 @@ async function migrateUsersFromJson(): Promise<void> {
     );
     masuk += result.affectedRows;
   }
-  console.log(`Migrasi akun dari db.json -> MySQL: ${masuk} akun dipindahkan.`);
+  console.log(`Migrasi akun dari db.json -> database: ${masuk} akun dipindahkan.`);
 }

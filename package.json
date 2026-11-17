@@ -1,15 +1,19 @@
 {
   "name": "asmorobangun-backend",
   "version": "3.0.0",
-  "description": "Backend API Sanggar Asmorobangun (Express + penyimpanan JSON) — terstruktur per kelompok modul",
+  "description": "Backend API Sanggar Asmorobangun (Express + TypeScript + MySQL/TiDB) — terstruktur per kelompok modul",
   "main": "src/index.ts",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "ts-node --transpile-only src/index.ts",
     "dev": "nodemon --watch src --ext js,ts,json --exec ts-node --transpile-only src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
-    "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts"
+    "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts",
+    "create:admin": "ts-node --transpile-only scripts/create-admin.ts"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

@@ -3,7 +3,7 @@
 // ===========================================================================
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/error";
-import * as c from "./ai.controller";
+import * as c from "../../controllers/ai.controller";
 
 const router = Router();
 

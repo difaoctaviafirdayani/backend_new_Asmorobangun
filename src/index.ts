@@ -1,7 +1,7 @@
 // ===========================================================================
 // TITIK MASUK (TypeScript) — jalankan dengan:  npm run dev   atau   npm start
 // ===========================================================================
-import { PORT, HOST, JWT_IS_DEFAULT } from "./config/env";
+import { PORT, HOST, JWT_IS_DEFAULT } from "./config/appConfig";
 import { initDb } from "./database/db";
 import { initMysql } from "./database/mysql";
 

@@ -1,9 +1,10 @@
 // ===========================================================================
-// DATABASE JSON — data/db.json. Sekarang hanya dipakai sebagai sumber migrasi
+// DATABASE JSON: data/db.json. Sekarang hanya dipakai sebagai sumber migrasi
 // satu kali ke MySQL (akun, konten, dll). Data utama ada di MySQL.
 // ===========================================================================
 import fs from "fs";
 import path from "path";
+import { IS_DEV_ENV } from "../config/appConfig";
 
 export const DB_PATH = path.join(__dirname, "..", "..", "data", "db.json");
 
@@ -14,6 +15,8 @@ const DEFAULT_ARRAYS = [
 ];
 
 export function readDB(): any {
+  // db.json berisi data developer: tidak boleh dibaca di staging/production.
+  if (!IS_DEV_ENV) throw new Error("db.json hanya dipakai di environment development.");
   return JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
 }
 
@@ -26,7 +29,7 @@ export function writeDB(data: unknown): void {
 }
 
 // Antrian supaya penulisan tidak saling menimpa.
-// PENTING: kalau satu proses gagal, antrian tetap lanjut — tidak macet selamanya.
+// PENTING: kalau satu proses gagal, antrian tetap lanjut dan tidak macet selamanya.
 let queue: Promise<unknown> = Promise.resolve();
 export function update<T>(mutatorFn: (data: any) => T): Promise<T> {
   const run = queue.then(() => {
@@ -41,6 +44,8 @@ export function update<T>(mutatorFn: (data: any) => T): Promise<T> {
 
 // Dipanggil sekali saat server start: pastikan struktur data lengkap.
 export function initDb(): void {
+  if (!IS_DEV_ENV) return; // di hosting jangan sentuh db.json
+
   if (!fs.existsSync(DB_PATH)) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     writeDB({});

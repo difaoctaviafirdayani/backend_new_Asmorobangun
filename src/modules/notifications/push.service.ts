@@ -1,4 +1,10 @@
-import { FIREBASE_SERVICE_ACCOUNT } from "../../config/env";
+// =============================================================================
+// PUSH SERVICE — kirim push notification ke HP pengguna lewat Firebase (FCM).
+// Aman dipanggil kapan saja: kalau Firebase belum diset / gagal, fungsi ini
+// TIDAK melempar error, jadi proses utama (ubah status pesanan, dll) tidak terganggu.
+// Butuh:  npm install firebase-admin
+// =============================================================================
+import { FIREBASE_SERVICE_ACCOUNT } from "../../config/appConfig";
 import * as pushRepo from "../../database/push.repo";
 
 export interface PushMessage {

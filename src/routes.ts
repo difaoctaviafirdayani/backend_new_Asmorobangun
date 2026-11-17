@@ -23,6 +23,7 @@ import notificationsRoutes from "./modules/notifications/notifications.routes";
 import statsRoutes from "./modules/admin/stats.routes";
 import uploadsRoutes from "./modules/admin/uploads.routes";
 import logsRoutes from "./modules/admin/logs.routes";
+import knowledgeRoutes from "./modules/ai/knowledge.routes";
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.use("/forum", forumRoutes);
 router.use("/search", searchRoutes);
 router.use("/ai", chatbotRoutes); // chatbot topeng
 router.use("/ai", analysisRoutes); // analisis forum (Gemini) + verifikasi admin
+router.use("/knowledge", knowledgeRoutes); // dokumen sumber jawaban chatbot (admin)
 
 // 6. NOTIFIKASI .......... src/modules/notifications
 router.use("/notifications", notificationsRoutes);

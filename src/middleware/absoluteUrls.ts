@@ -4,7 +4,7 @@
 // Cara minta: header  X-Absolute-Urls: 1  (atau  ?absoluteUrls=1), atau ABSOLUTE_URLS=true di .env.
 // ===========================================================================
 import type { NextFunction, Request, Response } from "express";
-import { PUBLIC_URL, ABSOLUTE_URLS } from "../config/env";
+import { PUBLIC_URL, ABSOLUTE_URLS } from "../config/appConfig";
 
 const PREFIXES = ["/uploads/", "/app/assets/"];
 
