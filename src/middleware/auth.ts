@@ -34,7 +34,11 @@ async function resolveUser(token: string): Promise<Resolved | null> {
   };
 }
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requireAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const token = getToken(req);
   if (!token) {
     res.status(401).json({ error: "Kamu harus login untuk melakukan ini." });
@@ -43,7 +47,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     const resolved = await resolveUser(token);
     if (!resolved) {
-      res.status(401).json({ error: "Sesi login sudah tidak berlaku. Silakan login ulang." });
+      res.status(401).json({
+        error: "Sesi login sudah tidak berlaku. Silakan login ulang.",
+      });
       return;
     }
     req.user = resolved.user;
@@ -51,8 +57,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.tokenExp = resolved.exp;
     next();
   } catch (err: any) {
-    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError" || err.name === "NotBeforeError") {
-      res.status(401).json({ error: "Sesi login tidak valid atau sudah kedaluwarsa." });
+    if (
+      err.name === "JsonWebTokenError" ||
+      err.name === "TokenExpiredError" ||
+      err.name === "NotBeforeError"
+    ) {
+      res
+        .status(401)
+        .json({ error: "Sesi login tidak valid atau sudah kedaluwarsa." });
       return;
     }
     next(err); // error lain (misal MySQL mati) -> errorHandler
@@ -60,7 +72,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 }
 
 // Menempelkan req.user kalau token valid, tapi tidak memblokir kalau tidak login.
-export async function optionalAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
+export async function optionalAuth(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
   const token = getToken(req);
   if (token) {
     try {
@@ -77,7 +93,11 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
   next();
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (!req.user || req.user.role !== "admin") {
     res.status(403).json({ error: "Khusus admin sanggar." });
     return;

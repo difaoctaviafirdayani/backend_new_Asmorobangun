@@ -65,7 +65,7 @@ export async function initMysql(): Promise<void> {
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
     connectTimeout: 15000,
-    timezone: "Z", // simpan & baca waktu sebagai UTC
+    timezone: "Z",
     charset: "utf8mb4",
     // TiDB Cloud wajib TLS. Sertifikatnya dari CA publik, jadi boleh diverifikasi penuh.
     // Kalau gagal karena sertifikat, sementara ganti jadi { rejectUnauthorized: false }.
@@ -111,6 +111,8 @@ export async function initMysql(): Promise<void> {
   await require("./ai.repo").init(); // hasil AI + status verifikasi admin
   await require("../models/knowledge.model").init(); // dokumen pengetahuan untuk chatbot
   await require("./push.repo").init(); // token perangkat untuk push notification
+  await require("./notifications.repo").init();
+  await require("./migrations").runDataMigrations();
   console.log(`Database terhubung [${IS_DEV_ENV ? "development" : "hosting"}]: ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME}`);
 }
 
@@ -148,7 +150,7 @@ async function migrateUsersFromJson(): Promise<void> {
         u.avatar || null,
         u.tokenVersion || 0,
         new Date(u.createdAt || Date.now()),
-      ]
+      ],
     );
     masuk += result.affectedRows;
   }

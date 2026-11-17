@@ -162,3 +162,11 @@ export function makeRepo(spec: RepoSpec): Repo {
   };
   return repo;
 }
+
+export async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
+  const [[row]] = await getPool().query(
+    "SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+    [table, column]
+  );
+  if (Number(row.n) === 0) await getPool().query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+}

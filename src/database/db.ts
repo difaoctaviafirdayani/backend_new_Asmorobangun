@@ -1,5 +1,4 @@
-  if (!IS_DEV_ENV) return; // di hosting jangan sentuh db.json
-  // // ===========================================================================
+// ===========================================================================
 // DATABASE JSON — data/db.json. Sekarang hanya dipakai sebagai sumber migrasi
 // satu kali ke MySQL (akun, konten, dll). Data utama ada di MySQL.
 // ===========================================================================
@@ -45,6 +44,7 @@ export function update<T>(mutatorFn: (data: any) => T): Promise<T> {
 
 // Dipanggil sekali saat server start: pastikan struktur data lengkap.
 export function initDb(): void {
+  if (!IS_DEV_ENV) return; // di hosting jangan sentuh db.json
   if (!fs.existsSync(DB_PATH)) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     writeDB({});

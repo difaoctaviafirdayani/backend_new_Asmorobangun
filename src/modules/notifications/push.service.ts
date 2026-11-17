@@ -23,7 +23,10 @@ function getMessaging(): any {
     const json = FIREBASE_SERVICE_ACCOUNT.trim().startsWith("{")
       ? FIREBASE_SERVICE_ACCOUNT
       : Buffer.from(FIREBASE_SERVICE_ACCOUNT, "base64").toString("utf8");
-    if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(JSON.parse(json)) });
+    if (!admin.apps.length)
+      admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(json)),
+      });
     messaging = admin.messaging();
     return messaging;
   } catch (err: any) {
@@ -32,7 +35,10 @@ function getMessaging(): any {
   }
 }
 
-export async function notifyUser(userId: string, msg: PushMessage): Promise<void> {
+export async function notifyUser(
+  userId: string,
+  msg: PushMessage,
+): Promise<void> {
   try {
     const fcm = getMessaging();
     if (!fcm || !userId) return;
@@ -49,7 +55,11 @@ export async function notifyUser(userId: string, msg: PushMessage): Promise<void
     const dead: string[] = [];
     result.responses.forEach((r: any, i: number) => {
       const code = r.error?.code;
-      if (!r.success && (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token")) {
+      if (
+        !r.success &&
+        (code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token")
+      ) {
         dead.push(tokens[i]);
       }
     });

@@ -9,7 +9,14 @@ import { httpError } from "../../middleware/error";
 import { activeModelLabel, generateText } from "./llm.service";
 
 export const SENTIMENTS = ["positif", "netral", "negatif"] as const;
-export const TOPICS = ["kelas_tari", "karawitan", "topeng", "booking", "umum", "lainnya"] as const;
+export const TOPICS = [
+  "kelas_tari",
+  "karawitan",
+  "topeng",
+  "booking",
+  "umum",
+  "lainnya",
+] as const;
 export const RISKS = ["rendah", "sedang", "tinggi"] as const;
 
 export interface ThreadAnalysis {
@@ -61,35 +68,61 @@ const RESPONSE_SCHEMA = {
     flagged_injection: { type: "BOOLEAN" },
     confidence: { type: "NUMBER" },
   },
-  required: ["summary", "sentiment", "topic", "risk_level", "needs_admin_reply", "flagged_injection", "confidence"],
+  required: [
+    "summary",
+    "sentiment",
+    "topic",
+    "risk_level",
+    "needs_admin_reply",
+    "flagged_injection",
+    "confidence",
+  ],
 };
 
 // ----------------------------------------------------------------------------
 // VALIDASI keluaran AI — jangan pernah percaya mentah-mentah.
 // ----------------------------------------------------------------------------
-export type Validation = { ok: true; value: ThreadAnalysis } | { ok: false; error: string };
+export type Validation =
+  | { ok: true; value: ThreadAnalysis }
+  | { ok: false; error: string };
 
-const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  typeof v === "string" && (list as readonly string[]).includes(v);
 
 export function validateAnalysis(raw: string): Validation {
   let data: any;
   try {
     // Jaga-jaga kalau AI tetap membungkus dengan ```json ... ```
-    const cleaned = String(raw).trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const cleaned = String(raw)
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "");
     data = JSON.parse(cleaned);
   } catch {
     return { ok: false, error: "keluaran AI bukan JSON yang valid" };
   }
-  if (!data || typeof data !== "object" || Array.isArray(data)) return { ok: false, error: "JSON harus berupa objek" };
+  if (!data || typeof data !== "object" || Array.isArray(data))
+    return { ok: false, error: "JSON harus berupa objek" };
 
   const summary = typeof data.summary === "string" ? data.summary.trim() : "";
-  if (!summary || summary.length > 400) return { ok: false, error: "summary kosong atau terlalu panjang" };
-  if (!oneOf(SENTIMENTS, data.sentiment)) return { ok: false, error: "sentiment di luar pilihan" };
-  if (!oneOf(TOPICS, data.topic)) return { ok: false, error: "topic di luar pilihan" };
-  if (!oneOf(RISKS, data.risk_level)) return { ok: false, error: "risk_level di luar pilihan" };
-  if (typeof data.needs_admin_reply !== "boolean") return { ok: false, error: "needs_admin_reply harus boolean" };
-  if (typeof data.flagged_injection !== "boolean") return { ok: false, error: "flagged_injection harus boolean" };
-  if (typeof data.confidence !== "number" || !Number.isFinite(data.confidence) || data.confidence < 0 || data.confidence > 1) {
+  if (!summary || summary.length > 400)
+    return { ok: false, error: "summary kosong atau terlalu panjang" };
+  if (!oneOf(SENTIMENTS, data.sentiment))
+    return { ok: false, error: "sentiment di luar pilihan" };
+  if (!oneOf(TOPICS, data.topic))
+    return { ok: false, error: "topic di luar pilihan" };
+  if (!oneOf(RISKS, data.risk_level))
+    return { ok: false, error: "risk_level di luar pilihan" };
+  if (typeof data.needs_admin_reply !== "boolean")
+    return { ok: false, error: "needs_admin_reply harus boolean" };
+  if (typeof data.flagged_injection !== "boolean")
+    return { ok: false, error: "flagged_injection harus boolean" };
+  if (
+    typeof data.confidence !== "number" ||
+    !Number.isFinite(data.confidence) ||
+    data.confidence < 0 ||
+    data.confidence > 1
+  ) {
     return { ok: false, error: "confidence harus angka 0 sampai 1" };
   }
 
@@ -114,7 +147,7 @@ export function validateAnalysis(raw: string): Validation {
 // ----------------------------------------------------------------------------
 export async function analyzeText(
   anonymizedText: string,
-  fetchFn: typeof fetch = fetch
+  fetchFn: typeof fetch = fetch,
 ): Promise<{ value: ThreadAnalysis; model: string }> {
   let lastError = "";
   for (let attempt = 1; attempt <= 2; attempt += 1) {

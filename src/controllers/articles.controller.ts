@@ -1,87 +1,102 @@
-// CONTROLLER ARTIKEL / BERITA
 import type { Request, Response } from "express";
+import { nanoid } from "nanoid";
 import { articles } from "../database/content.repo";
 import { httpError } from "../middleware/error";
 import { lower } from "../utils/helpers";
-import { currentUser, imageValue, newId, optionalText, requiredText, slugify, text } from "./common";
+import { notifyAllMembers } from "../modules/notifications/notify.service";
+import { ARTICLE_CATEGORIES, exactCategory } from "../config/rules";
+import type { AuthedRequest } from "../types/auth";
 
-async function uniqueSlug(base: string, exceptId?: string): Promise<string> {
-  const all = await articles.list();
-  const taken = new Set(all.filter((a) => a.id !== exceptId).map((a) => a.slug));
-  let slug = base;
-  for (let i = 2; taken.has(slug); i += 1) slug = `${base}-${i}`;
-  return slug;
-}
-
-// GET /api/articles?q=&category=&limit=
 export async function list(req: Request, res: Response): Promise<void> {
-  const q = lower(req.query.q).trim();
-  const category = lower(req.query.category).trim();
-  const limit = Number(req.query.limit);
+  const { q, category, limit } = req.query;
   let items = await articles.list();
-  if (q) items = items.filter((a) => [a.title, a.excerpt, a.category].some((f) => lower(f).includes(q)));
-  if (category) items = items.filter((a) => lower(a.category) === category);
-  if (Number.isInteger(limit) && limit > 0) items = items.slice(0, limit);
-  res.json(items);
+  if (category)
+    items = items.filter((a) => lower(a.category) === lower(category));
+  if (q) {
+    const needle = lower(q);
+    items = items.filter((a) =>
+      [a.title, a.excerpt, a.content].some((f) => lower(f).includes(needle)),
+    );
+  }
+  const featured = items.find((a) => a.featured) || items[0] || null;
+  if (limit && Number(limit) > 0) items = items.slice(0, Number(limit));
+  res.json({ featured, articles: items });
 }
 
-// GET /api/articles/categories
 export async function categories(_req: Request, res: Response): Promise<void> {
-  const items = await articles.list();
-  res.json(Array.from(new Set(items.map((a) => a.category).filter(Boolean))).sort());
+  res.json({ categories: [...ARTICLE_CATEGORIES] });
 }
 
-// GET /api/articles/:slug  (slug atau id)
 export async function getOne(req: Request, res: Response): Promise<void> {
-  const key = req.params.slug;
-  const item = (await articles.list()).find((a) => a.slug === key || a.id === key);
-  if (!item) throw httpError(404, "Artikel tidak ditemukan.");
-  res.json(item);
+  const items = await articles.list();
+  const article = items.find(
+    (a) => a.slug === req.params.slug || a.id === req.params.slug,
+  );
+  if (!article) throw httpError(404, "Artikel tidak ditemukan.");
+  res.json({ article });
 }
 
-// POST /api/articles (admin)
 export async function create(req: Request, res: Response): Promise<void> {
-  const b = req.body || {};
-  const title = requiredText(b.title, "Judul", 255);
-  const content = requiredText(b.content, "Isi artikel", 200000);
-  const id = newId("art");
-  const item = await articles.insert({
-    id,
-    slug: await uniqueSlug(slugify(text(b.slug, 150) || title)),
+  const { user } = req as AuthedRequest;
+  const { title, excerpt, content, image, category } = req.body;
+  if (!title || !content)
+    throw httpError(400, "Judul dan isi artikel wajib diisi.");
+  const cat =
+    category === undefined || category === null || category === ""
+      ? "Budaya"
+      : exactCategory(category, ARTICLE_CATEGORIES);
+  if (!cat)
+    throw httpError(
+      400,
+      `Kategori harus salah satu dari: ${ARTICLE_CATEGORIES.join(", ")}.`,
+    );
+  const slug = String(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+  const article = await articles.insert({
+    id: `art-${nanoid(8)}`,
+    slug: `${slug || "artikel"}-${nanoid(4)}`,
     title,
-    excerpt: text(b.excerpt, 2000) || content.slice(0, 200),
+    excerpt: excerpt || String(content).slice(0, 140),
     content,
-    image: imageValue(b.image) ?? null,
-    category: text(b.category, 100) || "Berita",
-    author: text(b.author, 100) || currentUser(req.user).name,
-    date: b.date || new Date().toISOString(),
-    featured: !!b.featured,
+    image: image || "artikel-default.jpg",
+    category: cat,
+    author: user.name,
+    date: new Date().toISOString(),
+    featured: false,
   });
-  res.status(201).json(item);
+  if (!article) throw httpError(500, "Artikel gagal disimpan.");
+  await notifyAllMembers({
+    type: "article",
+    title: `Berita baru: ${String(title).slice(0, 80)}`,
+    body: String(article.excerpt || "").slice(0, 120),
+    refId: String(article.slug),
+    refType: "article",
+    dedupeKey: `article:${article.id}`,
+  });
+  res.status(201).json({ article });
 }
 
-// PATCH /api/articles/:id (admin)
 export async function update(req: Request, res: Response): Promise<void> {
-  const current = await articles.findById(req.params.id);
-  if (!current) throw httpError(404, "Artikel tidak ditemukan.");
-  const b = req.body || {};
-  const changes: Record<string, any> = {};
-  if (b.title !== undefined) changes.title = requiredText(b.title, "Judul", 255);
-  if (b.content !== undefined) changes.content = requiredText(b.content, "Isi artikel", 200000);
-  if (b.excerpt !== undefined) changes.excerpt = optionalText(b.excerpt, 2000);
-  if (b.category !== undefined) changes.category = text(b.category, 100) || "Berita";
-  if (b.author !== undefined) changes.author = optionalText(b.author, 100);
-  if (b.image !== undefined) changes.image = imageValue(b.image);
-  if (b.featured !== undefined) changes.featured = !!b.featured;
-  if (b.date !== undefined) changes.date = b.date;
-  if (b.slug !== undefined) changes.slug = await uniqueSlug(slugify(text(b.slug, 150)), current.id);
-  await articles.patch(current.id, changes);
-  res.json(await articles.findById(current.id));
+  if (!(await articles.findById(req.params.id)))
+    throw httpError(404, "Artikel tidak ditemukan.");
+  const changes = { ...req.body };
+  if (changes.category !== undefined) {
+    const cat = exactCategory(changes.category, ARTICLE_CATEGORIES);
+    if (!cat)
+      throw httpError(
+        400,
+        `Kategori harus salah satu dari: ${ARTICLE_CATEGORIES.join(", ")}.`,
+      );
+    changes.category = cat;
+  }
+  await articles.patch(req.params.id, changes);
+  res.json({ message: "Artikel diperbarui." });
 }
 
-// DELETE /api/articles/:id (admin)
 export async function remove(req: Request, res: Response): Promise<void> {
-  if (!(await articles.findById(req.params.id))) throw httpError(404, "Artikel tidak ditemukan.");
   await articles.remove(req.params.id);
   res.json({ message: "Artikel dihapus." });
 }

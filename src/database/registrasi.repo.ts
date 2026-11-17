@@ -1,5 +1,5 @@
 import { getPool } from "./mysql";
-import { makeRepo, TABLE_OPTS, toIso, toDate } from "./table";
+import { addColumnIfMissing, makeRepo, TABLE_OPTS, toIso, toDate } from "./table";
 import { readDB } from "./db";
 
 type Row = Record<string, any>;
@@ -48,6 +48,9 @@ const ordersBase = makeRepo({
     message: "message",
     paymentMethod: "payment_method",
     proofFile: "proof_file",
+    courier: "courier",
+    trackingNumber: "tracking_number",
+    shippingJson: "shipping",
     status: "status",
     createdAt: "created_at",
   },
@@ -60,6 +63,19 @@ function chatOut(row: Row): { from: string; text: string; date: string } {
   return { from: row.sender, text: row.text, date: toIso(row.date) };
 }
 
+function withShipping(o: Row): Row {
+  const { shippingJson, ...rest } = o;
+  let shipping: Row | null = null;
+  if (typeof shippingJson === "string" && shippingJson.trim()) {
+    try {
+      shipping = JSON.parse(shippingJson);
+    } catch {
+      shipping = null;
+    }
+  }
+  return { ...rest, shipping };
+}
+
 async function withChat(orderList: Row[]): Promise<Row[]> {
   if (!orderList.length) return orderList;
   const [rows] = await getPool().query(
@@ -68,38 +84,11 @@ async function withChat(orderList: Row[]): Promise<Row[]> {
   );
   const byOrder: Record<string, ReturnType<typeof chatOut>[]> = {};
   for (const r of rows as Row[]) (byOrder[r.order_id] = byOrder[r.order_id] || []).push(chatOut(r));
-  return orderList.map((o) => ({ ...o, chatLog: byOrder[o.id] || [] }));
+  return orderList.map((o) => ({ ...withShipping(o), chatLog: byOrder[o.id] || [] }));
 }
-
-export const ORDER_PAYMENT_WINDOW_HOURS = 24;
-let lastExpireRun = 0;
 
 export const orders = {
   patch: ordersBase.patch,
-
-  async cancelExpiredUnpaid(force = false): Promise<number> {
-    const nowMs = Date.now();
-    if (!force && nowMs - lastExpireRun < 60_000) return 0;
-    lastExpireRun = nowMs;
-    const cutoff = new Date(nowMs - ORDER_PAYMENT_WINDOW_HOURS * 3600 * 1000);
-    const pool = getPool();
-    const where =
-      "status = 'menunggu_konfirmasi_admin' AND (proof_file IS NULL OR proof_file = '') " +
-      "AND (payment_method IS NULL OR payment_method <> 'cash') AND created_at < ?";
-    const [rows] = await pool.query(`SELECT id FROM topeng_orders WHERE ${where}`, [cutoff]);
-    const ids = (rows as Row[]).map((r) => r.id);
-    if (!ids.length) return 0;
-    await pool.query("UPDATE topeng_orders SET status = 'dibatalkan' WHERE id IN (?)", [ids]);
-    for (const id of ids) {
-      await pool.query("INSERT INTO topeng_order_chat (order_id, sender, `text`, `date`) VALUES (?, ?, ?, ?)", [
-        id,
-        "system",
-        `Pesanan dibatalkan otomatis karena belum dibayar dalam ${ORDER_PAYMENT_WINDOW_HOURS} jam.`,
-        new Date(),
-      ]);
-    }
-    return ids.length;
-  },
 
   async findById(id: string): Promise<Row | null> {
     const o = await ordersBase.findById(id);
@@ -115,7 +104,9 @@ export const orders = {
   },
 
   async create(order: Row): Promise<Row | null> {
-    const { chatLog = [], ...fields } = order;
+    const { chatLog = [], shipping, ...rest } = order;
+    const fields: Row = { ...rest };
+    if (shipping) fields.shippingJson = JSON.stringify(shipping);
     const conn = await getPool().getConnection();
     try {
       await conn.beginTransaction();
@@ -246,6 +237,10 @@ export async function init(): Promise<void> {
       qris_image         MEDIUMTEXT   NULL,
       whatsapp           VARCHAR(30)  NULL
     ) ${TABLE_OPTS}`);
+
+  await addColumnIfMissing("topeng_orders", "courier", "VARCHAR(80) NULL");
+  await addColumnIfMissing("topeng_orders", "tracking_number", "VARCHAR(80) NULL");
+  await addColumnIfMissing("topeng_orders", "shipping", "TEXT NULL");
 
   await migrateFromJson();
 }

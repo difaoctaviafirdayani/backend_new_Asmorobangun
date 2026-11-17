@@ -1,6 +1,6 @@
 // REPOSITORY LAYANAN — fasilitas, ulasan, katalog topeng (MySQL).
 import { getPool } from "./mysql";
-import { makeRepo, TABLE_OPTS } from "./table";
+import { addColumnIfMissing, makeRepo, TABLE_OPTS } from "./table";
 import { readDB } from "./db";
 
 export const facilities = makeRepo({
@@ -35,24 +35,55 @@ const reviewsBase = makeRepo({
     date: "date",
     bookingId: "booking_id",
     image: "image",
+    imagesJson: "images",
   },
   dates: ["date"],
   nums: ["rating"],
   order: "`date` DESC",
 });
 
+type Row = Record<string, any>;
+
+export function decorateReview(row: Row | null): Row | null {
+  if (!row) return row;
+  const { imagesJson, ...rest } = row;
+  let images: string[] = [];
+  if (typeof imagesJson === "string" && imagesJson.trim()) {
+    try {
+      const parsed = JSON.parse(imagesJson);
+      if (Array.isArray(parsed)) images = parsed.map(String).filter(Boolean);
+    } catch {
+      /* abaikan JSON rusak */
+    }
+  }
+  if (!images.length && rest.image) images = [String(rest.image)];
+  return { ...rest, images, image: images[0] || null };
+}
+
+export function imagesPatch(images: string[]): Row {
+  return { imagesJson: images.length ? JSON.stringify(images) : null, image: images[0] || null };
+}
+
+const decorateAll = (rows: Row[]): Row[] => rows.map((r) => decorateReview(r) as Row);
+
 export const reviews = {
   ...reviewsBase,
-  listByFacility(facilityId: string) {
-    return reviewsBase.list({ where: "facility_id = ?", params: [facilityId] });
+  async list(opts?: Parameters<typeof reviewsBase.list>[0]) {
+    return decorateAll(await reviewsBase.list(opts));
+  },
+  async findById(id: string) {
+    return decorateReview(await reviewsBase.findById(id));
+  },
+  async listByFacility(facilityId: string) {
+    return decorateAll(await reviewsBase.list({ where: "facility_id = ?", params: [facilityId] }));
   },
   async findByBooking(bookingId: string) {
     const rows = await reviewsBase.list({ where: "booking_id = ?", params: [bookingId] });
-    return rows[0] || null;
+    return decorateReview(rows[0] || null);
   },
-  listByBookings(bookingIds: string[]) {
-    if (!bookingIds.length) return Promise.resolve([]);
-    return reviewsBase.list({ where: "booking_id IN (?)", params: [bookingIds] });
+  async listByBookings(bookingIds: string[]) {
+    if (!bookingIds.length) return [];
+    return decorateAll(await reviewsBase.list({ where: "booking_id IN (?)", params: [bookingIds] }));
   },
   // { [facilityId]: { count, avg } } — avg sudah dibulatkan 1 desimal
   async summary(): Promise<Record<string, { count: number; avg: number | null }>> {
@@ -79,6 +110,7 @@ const topengReviewsBase = makeRepo({
     rating: "rating",
     comment: "comment",
     image: "image",
+    imagesJson: "images",
     date: "date",
   },
   dates: ["date"],
@@ -88,16 +120,22 @@ const topengReviewsBase = makeRepo({
 
 export const topengReviews = {
   ...topengReviewsBase,
-  listByTopeng(topengId: string) {
-    return topengReviewsBase.list({ where: "topeng_id = ?", params: [topengId] });
+  async list(opts?: Parameters<typeof topengReviewsBase.list>[0]) {
+    return decorateAll(await topengReviewsBase.list(opts));
+  },
+  async findById(id: string) {
+    return decorateReview(await topengReviewsBase.findById(id));
+  },
+  async listByTopeng(topengId: string) {
+    return decorateAll(await topengReviewsBase.list({ where: "topeng_id = ?", params: [topengId] }));
   },
   async findByOrder(orderId: string) {
     const rows = await topengReviewsBase.list({ where: "order_id = ?", params: [orderId] });
-    return rows[0] || null;
+    return decorateReview(rows[0] || null);
   },
-  listByOrders(orderIds: string[]) {
-    if (!orderIds.length) return Promise.resolve([]);
-    return topengReviewsBase.list({ where: "order_id IN (?)", params: [orderIds] });
+  async listByOrders(orderIds: string[]) {
+    if (!orderIds.length) return [];
+    return decorateAll(await topengReviewsBase.list({ where: "order_id IN (?)", params: [orderIds] }));
   },
   async summaryOf(topengId: string): Promise<{ count: number; avg: number | null }> {
     const [[row]] = await getPool().query(
@@ -174,6 +212,7 @@ export async function init(): Promise<void> {
   // Kolom baru di tabel reviews (tautan ke booking + foto opsional). Aman dijalankan berulang.
   await addColumnIfMissing("reviews", "booking_id", "VARCHAR(30) NULL");
   await addColumnIfMissing("reviews", "image", "VARCHAR(255) NULL");
+  await addColumnIfMissing("reviews", "images", "TEXT NULL"); // maksimal 5 foto, JSON array
   try {
     await pool.query("ALTER TABLE reviews ADD UNIQUE KEY uq_reviews_booking (booking_id)");
   } catch (e: any) {
@@ -195,15 +234,9 @@ export async function init(): Promise<void> {
       KEY idx_topeng_reviews_topeng (topeng_id)
     ) ${TABLE_OPTS}`);
 
-  await migrateFromJson();
-}
+  await addColumnIfMissing("topeng_reviews", "images", "TEXT NULL");
 
-async function addColumnIfMissing(table: string, column: string, definition: string): Promise<void> {
-  const [[row]] = await getPool().query(
-    "SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-    [table, column]
-  );
-  if (Number(row.n) === 0) await getPool().query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+  await migrateFromJson();
 }
 
 async function migrateFromJson(): Promise<void> {
@@ -224,10 +257,10 @@ async function migrateFromJson(): Promise<void> {
     let masuk = 0;
     for (const item of json[key] || []) {
       if (!item.id) continue;
-      if (key === "reviews" && !(await facilities.findById(item.facilityId))) continue; // ulasan yatim dilewati
+      if (key === "reviews" && !(await facilities.findById(item.facilityId))) continue;
       await repo.insert(item);
       masuk += 1;
     }
     if (masuk) console.log(`Migrasi ${key} dari db.json -> MySQL: ${masuk} data dipindahkan.`);
   }
-}
+}

@@ -28,7 +28,9 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 });
 
 if (NODE_ENV === "production" && CORS_ORIGINS.length === 0) {
-  console.warn("⚠️  CORS_ORIGINS kosong di production: semua website boleh memanggil API. Isi dengan alamat frontend kamu.");
+  console.warn(
+    "⚠️  CORS_ORIGINS kosong di production: semua website boleh memanggil API. Isi dengan alamat frontend kamu.",
+  );
 }
 app.use(cors(CORS_ORIGINS.length ? { origin: CORS_ORIGINS } : undefined));
 app.use(express.json({ limit: "2mb" }));
@@ -48,10 +50,13 @@ app.get(
       "X-Content-Type-Options": "nosniff",
     });
     res.send(row.data);
-  })
+  }),
 );
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-app.use("/app/assets", express.static(path.join(__dirname, "..", "public", "assets")));
+app.use(
+  "/app/assets",
+  express.static(path.join(__dirname, "..", "public", "assets")),
+);
 
 // Semua endpoint ada di /api
 app.use("/api", absoluteUrls, apiRoutes);
