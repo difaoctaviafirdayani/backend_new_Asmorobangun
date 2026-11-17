@@ -68,6 +68,20 @@ function makeContentRepo(table: string) {
       return (rows as Row[]).map((r) => rowToObj(spec, r) as Row);
     },
 
+    // Paginasi: ambil satu halaman saja + total seluruh data.
+    // "id" ditambahkan di ORDER BY supaya urutan stabil kalau ada data dengan tanggal sama.
+    async listPage(limit: number, offset: number): Promise<{ items: Row[]; total: number }> {
+      const [rows] = await getPool().query(
+        `SELECT ${colList} FROM \`${table}\` ORDER BY ${spec.order}, id LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+      const [cnt] = await getPool().query(`SELECT COUNT(*) AS total FROM \`${table}\``);
+      return {
+        items: (rows as Row[]).map((r) => rowToObj(spec, r) as Row),
+        total: Number((cnt as any)[0].total),
+      };
+    },
+
     async findById(id: string): Promise<Row | null> {
       const [rows] = await getPool().query(`SELECT ${colList} FROM \`${table}\` WHERE id = ? LIMIT 1`, [id]);
       return rowToObj(spec, rows[0]);

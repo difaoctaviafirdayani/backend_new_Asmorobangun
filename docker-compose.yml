@@ -1,0 +1,13 @@
+services:
+  api:
+    image: ${IMAGE:-ghcr.io/GANTI_USERNAME/asmorobangun-backend}:${TAG:-latest}
+    container_name: asmorobangun-api
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./uploads:/app/uploads

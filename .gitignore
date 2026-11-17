@@ -5,3 +5,6 @@ uploads/payment_proof/*
 uploads/chat_attachment/*
 !uploads/**/.gitkeep
 uploads/avatars/*
+.env
+.env.development
+.env.production

@@ -2,10 +2,22 @@
 import type { Request, Response } from "express";
 import { gallery } from "../database/content.repo";
 import { httpError } from "../middleware/error";
-import { imageValue, newId, requiredText, text } from "./common";
+import { imageValue, newId, parsePaging, requiredText, text } from "./common";
 
-export async function list(_req: Request, res: Response): Promise<void> {
-  res.json(await gallery.list());
+export async function list(req: Request, res: Response): Promise<void> {
+  const paging = parsePaging(req.query);
+  if (!paging) {
+    res.json(await gallery.list()); // tanpa ?page / ?limit: respons lama (array), aplikasi lama tidak rusak
+    return;
+  }
+  const { items, total } = await gallery.listPage(paging.limit, paging.offset);
+  res.json({
+    items,
+    page: paging.page,
+    limit: paging.limit,
+    total,
+    totalPages: Math.ceil(total / paging.limit),
+  });
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {

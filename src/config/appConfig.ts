@@ -1,7 +1,19 @@
 // ===========================================================================
 // APP CONFIG — pengaturan aplikasi. Semua pembacaan file .env ada di sini (satu pintu).
 // ===========================================================================
-import "dotenv/config";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+
+// Pilih file env otomatis: production -> .env.production, selain itu -> .env.development.
+// Di Vercel/Docker variabel sudah disuntik dari luar, dan dotenv tidak menimpa yang sudah ada.
+const ENV_FILE =
+  process.env.ENV_FILE ||
+  (process.env.APP_ENV === "production" || process.env.NODE_ENV === "production"
+    ? ".env.production"
+    : ".env.development");
+const envPath = path.resolve(process.cwd(), ENV_FILE);
+if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
 
 const DEFAULT_SECRET = "asmorobangun-dev-secret-change-me";
 

@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
     "fix:users": "ts-node --transpile-only scripts/fix-duplicate-users.ts",
-    "create:admin": "ts-node --transpile-only scripts/create-admin.ts"
+    "create:admin": "ts-node --transpile-only scripts/create-admin.ts",
+    "seed:gallery": "ts-node --transpile-only scripts/seed-gallery.ts"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

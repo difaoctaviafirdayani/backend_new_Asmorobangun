@@ -94,3 +94,14 @@ export const STATUS_LABEL: Record<string, string> = {
 
 // Status akhir: tidak bisa lagi dibayar / diubah pengguna.
 export const FINAL_STATUSES = ["selesai", "ditolak", "dibatalkan"];
+
+// Paginasi opsional: ?page=1&limit=20. Tanpa page/limit -> null (respons lama tetap berlaku).
+export function parsePaging(
+  query: Record<string, unknown>,
+  { defaultLimit = 20, maxLimit = 100 } = {},
+): { page: number; limit: number; offset: number } | null {
+  if (query.page === undefined && query.limit === undefined) return null;
+  const page = Math.max(1, Math.floor(Number(query.page)) || 1);
+  const limit = Math.min(maxLimit, Math.max(1, Math.floor(Number(query.limit)) || defaultLimit));
+  return { page, limit, offset: (page - 1) * limit };
+}
