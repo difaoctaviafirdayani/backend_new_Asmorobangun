@@ -156,7 +156,7 @@ export async function analyzeText(
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: buildUserPrompt(anonymizedText) }],
         temperature: 0.2,
-        maxTokens: 600,
+        maxTokens: 1024, // sebelumnya 600
         json: true,
         geminiSchema: RESPONSE_SCHEMA,
       },
