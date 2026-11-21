@@ -2,11 +2,29 @@
 import type { Request, Response } from "express";
 import { topeng, topengReviews } from "../database/layanan.repo";
 import { httpError } from "../middleware/error";
-import { imageValue, newId, requiredText, text, toNumber } from "./common";
+import { buildMeta, imageValue, newId, parsePaging, requiredText, text, toNumber } from "./common";
 
-// GET /api/topeng
-export async function list(_req: Request, res: Response): Promise<void> {
-  res.json(await topeng.list());
+// GET /api/topeng?q=&sort=name|price&order=asc|desc&page=&limit=
+export async function list(req: Request, res: Response): Promise<void> {
+  const paging = parsePaging(req.query, { defaultLimit: 12, maxLimit: 100 });
+  const search = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
+  const sort =
+    typeof req.query.sort === "string" && ["name", "price"].includes(req.query.sort) ? req.query.sort : undefined;
+  const dir = String(req.query.order || "").toLowerCase() === "desc" ? "DESC" : "ASC";
+
+  const { items, total } = await topeng.query({
+    search,
+    searchFields: ["name", "character", "color"],
+    sort,
+    dir,
+    limit: paging?.limit,
+    offset: paging?.offset,
+  });
+  if (!paging) {
+    res.json(items); // tanpa page/limit: array seperti dulu (Flutter lama tetap aman)
+    return;
+  }
+  res.json({ items, meta: buildMeta(paging, total) });
 }
 
 // GET /api/topeng/:id — detail + ulasan

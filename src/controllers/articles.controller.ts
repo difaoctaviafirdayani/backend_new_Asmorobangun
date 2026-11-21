@@ -2,25 +2,32 @@ import type { Request, Response } from "express";
 import { nanoid } from "nanoid";
 import { articles } from "../database/content.repo";
 import { httpError } from "../middleware/error";
-import { lower } from "../utils/helpers";
 import { notifyAllMembers } from "../modules/notifications/notify.service";
 import { ARTICLE_CATEGORIES, exactCategory } from "../config/rules";
+import { buildMeta, parsePaging } from "./common";
 import type { AuthedRequest } from "../types/auth";
 
+// GET /api/articles?q=&category=&sort=date|title|category&order=asc|desc&page=&limit=
 export async function list(req: Request, res: Response): Promise<void> {
-  const { q, category, limit } = req.query;
-  let items = await articles.list();
-  if (category)
-    items = items.filter((a) => lower(a.category) === lower(category));
-  if (q) {
-    const needle = lower(q);
-    items = items.filter((a) =>
-      [a.title, a.excerpt, a.content].some((f) => lower(f).includes(needle)),
-    );
-  }
+  const paging = parsePaging(req.query, { defaultLimit: 10, maxLimit: 100 });
+  const str = (v: unknown, max = 100): string =>
+    typeof v === "string" ? v.trim().slice(0, max) : "";
+  const sort = ["date", "title", "category"].includes(str(req.query.sort))
+    ? str(req.query.sort)
+    : undefined;
+  const dir = str(req.query.order).toLowerCase() === "asc" ? "ASC" : "DESC";
+
+  const { items, total } = await articles.query({
+    search: str(req.query.q),
+    searchCols: ["title", "excerpt", "content"],
+    filters: { category: str(req.query.category) },
+    sort,
+    dir,
+    limit: paging?.limit,
+    offset: paging?.offset,
+  });
   const featured = items.find((a) => a.featured) || items[0] || null;
-  if (limit && Number(limit) > 0) items = items.slice(0, Number(limit));
-  res.json({ featured, articles: items });
+  res.json({ featured, articles: items, meta: buildMeta(paging, total) });
 }
 
 export async function categories(_req: Request, res: Response): Promise<void> {
@@ -28,10 +35,11 @@ export async function categories(_req: Request, res: Response): Promise<void> {
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {
-  const items = await articles.list();
-  const article = items.find(
-    (a) => a.slug === req.params.slug || a.id === req.params.slug,
-  );
+  const { items } = await articles.query({
+    filters: { slug: req.params.slug },
+    limit: 1,
+  });
+  const article = items[0] || (await articles.findById(req.params.slug));
   if (!article) throw httpError(404, "Artikel tidak ditemukan.");
   res.json({ article });
 }

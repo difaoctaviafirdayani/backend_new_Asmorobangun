@@ -105,3 +105,9 @@ export function parsePaging(
   const limit = Math.min(maxLimit, Math.max(1, Math.floor(Number(query.limit)) || defaultLimit));
   return { page, limit, offset: (page - 1) * limit };
 }
+// Metadata seragam untuk semua daftar: { page, limit, total, totalPages }
+export function buildMeta(paging: { page: number; limit: number } | null, total: number) {
+  return paging
+    ? { page: paging.page, limit: paging.limit, total, totalPages: Math.max(1, Math.ceil(total / paging.limit)) }
+    : { page: 1, limit: total, total, totalPages: 1 };
+}

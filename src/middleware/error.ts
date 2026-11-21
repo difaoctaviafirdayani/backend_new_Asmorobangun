@@ -55,5 +55,7 @@ export function errorHandler(err: any, req: Request, res: Response, _next: NextF
       /* abaikan */
     }
   }
-  res.status(status).json({ error: err.message || "Terjadi kesalahan pada server." });
+    // Error 500 jangan membocorkan pesan internal (SQL, koneksi, dll.). Detail tetap tercatat di error_logs.
+  const message = status === 500 ? "Terjadi kesalahan pada server." : err.message || "Terjadi kesalahan pada server.";
+  res.status(status).json({ error: message });
 }
