@@ -4,8 +4,16 @@
 import type { Request, Response } from "express";
 import * as model from "../models/knowledge.model";
 import { httpError } from "../middleware/error";
-import { activeModelLabel, activeProvider, isAiConfigured } from "../modules/ai/llm.service";
-import { buildCorpus, clearKnowledgeCache, searchKnowledge } from "../modules/ai/knowledge.service";
+import {
+  activeModelLabel,
+  activeProvider,
+  isAiConfigured,
+} from "../modules/ai/llm.service";
+import {
+  buildCorpus,
+  clearKnowledgeCache,
+  searchKnowledge,
+} from "../modules/ai/knowledge.service";
 import { newId, requiredText, text } from "./common";
 
 // GET /api/knowledge/status
@@ -49,11 +57,14 @@ export async function create(req: Request, res: Response): Promise<void> {
 
 // PATCH /api/knowledge/:id
 export async function update(req: Request, res: Response): Promise<void> {
-  if (!(await model.findById(req.params.id))) throw httpError(404, "Dokumen tidak ditemukan.");
+  if (!(await model.findById(req.params.id)))
+    throw httpError(404, "Dokumen tidak ditemukan.");
   const b = req.body || {};
   const changes: Partial<model.KnowledgeInput> = {};
-  if (b.title !== undefined) changes.title = requiredText(b.title, "Judul", 150);
-  if (b.content !== undefined) changes.content = requiredText(b.content, "Isi dokumen", 200000);
+  if (b.title !== undefined)
+    changes.title = requiredText(b.title, "Judul", 150);
+  if (b.content !== undefined)
+    changes.content = requiredText(b.content, "Isi dokumen", 200000);
   if (b.category !== undefined) changes.category = text(b.category, 60) || null;
   if (b.active !== undefined) changes.active = !!b.active;
   const doc = await model.update(req.params.id, changes);
@@ -63,7 +74,8 @@ export async function update(req: Request, res: Response): Promise<void> {
 
 // DELETE /api/knowledge/:id
 export async function remove(req: Request, res: Response): Promise<void> {
-  if (!(await model.findById(req.params.id))) throw httpError(404, "Dokumen tidak ditemukan.");
+  if (!(await model.findById(req.params.id)))
+    throw httpError(404, "Dokumen tidak ditemukan.");
   await model.remove(req.params.id);
   clearKnowledgeCache();
   res.json({ message: "Dokumen dihapus." });

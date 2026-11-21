@@ -4,6 +4,7 @@
 import { nanoid } from "nanoid";
 import { httpError } from "../middleware/error";
 import type { AuthUser } from "../types/auth";
+import { CANCEL_REASON_MAX, CANCEL_REASON_MIN, REFUND_ACCOUNT_MAX } from "../config/rules";
 
 // Id baru, contoh: newId("art") -> "art-Ab3dE9xZ"
 export const newId = (prefix: string): string => `${prefix}-${nanoid(8)}`;
@@ -110,4 +111,23 @@ export function buildMeta(paging: { page: number; limit: number } | null, total:
   return paging
     ? { page: paging.page, limit: paging.limit, total, totalPages: Math.max(1, Math.ceil(total / paging.limit)) }
     : { page: 1, limit: total, total, totalPages: 1 };
+}
+
+export function readCancelInput(
+  body: Record<string, unknown> | undefined,
+  { refund }: { refund: boolean },
+): { reason: string; refundAccount: string | null } {
+  const reason = text(body?.reason, CANCEL_REASON_MAX + 1).replace(/[\u0000-\u001F\u007F]/g, " ").trim();
+  if (reason.length < CANCEL_REASON_MIN)
+    throw httpError(400, `Alasan pembatalan wajib diisi (minimal ${CANCEL_REASON_MIN} karakter).`);
+  if (reason.length > CANCEL_REASON_MAX)
+    throw httpError(400, `Alasan pembatalan maksimal ${CANCEL_REASON_MAX} karakter.`);
+
+  const account = text(body?.refundAccount, REFUND_ACCOUNT_MAX + 1).replace(/[\u0000-\u001F\u007F]/g, " ").trim();
+  if (!refund) return { reason, refundAccount: null };
+  if (account.length < 5)
+    throw httpError(400, "Nomor rekening wajib diisi untuk pengembalian dana (contoh: BCA 1234567890 a.n. Nama).");
+  if (account.length > REFUND_ACCOUNT_MAX)
+    throw httpError(400, `Nomor rekening maksimal ${REFUND_ACCOUNT_MAX} karakter.`);
+  return { reason, refundAccount: account };
 }

@@ -31,9 +31,10 @@ router.post(
   ...uploadProof.single("proof"),
   asyncHandler(c.uploadProof),
 ); // bukti bayar
+router.post("/orders/:orderId/cancel", requireAuth, asyncHandler(c.cancel)); // batalkan (selama belum diproses)
 router.post("/orders/:orderId/cash", requireAuth, asyncHandler(c.payCash)); // (ditutup) topeng hanya QRIS/transfer
 
-// ulasan (hanya setelah pesanan selesai; pemilik boleh edit dan hapus)
+// ulasan (sejak pesanan diproses; pemilik boleh edit dan hapus)
 router.get("/orders/:orderId/review", requireAuth, asyncHandler(rv.get));
 router.post("/orders/:orderId/review", requireAuth, asyncHandler(rv.create));
 router.put("/orders/:orderId/review", requireAuth, asyncHandler(rv.update));

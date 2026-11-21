@@ -27,9 +27,10 @@ router.post(
   ...uploadProof.single("proof"),
   asyncHandler(c.uploadProof),
 ); // upload bukti bayar
+router.post("/:id/cancel", requireAuth, asyncHandler(c.cancel)); // batalkan (paling lambat H-1)
 router.post("/:id/cash", requireAuth, asyncHandler(c.payCash)); // bayar tunai di lokasi
 
-// ulasan (hanya setelah booking selesai; pemilik boleh edit dan hapus)
+// ulasan (sejak hari H layanan atau setelah selesai; pemilik boleh edit dan hapus)
 router.get("/:id/review", requireAuth, asyncHandler(rv.get));
 router.post("/:id/review", requireAuth, asyncHandler(rv.create));
 router.put("/:id/review", requireAuth, asyncHandler(rv.update));

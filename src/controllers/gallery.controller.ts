@@ -41,10 +41,12 @@ export async function create(req: Request, res: Response): Promise<void> {
 }
 
 export async function update(req: Request, res: Response): Promise<void> {
-  if (!(await gallery.findById(req.params.id))) throw httpError(404, "Foto galeri tidak ditemukan.");
+  if (!(await gallery.findById(req.params.id)))
+    throw httpError(404, "Foto galeri tidak ditemukan.");
   const b = req.body || {};
   const changes: Record<string, any> = {};
-  if (b.title !== undefined) changes.title = requiredText(b.title, "Judul", 255);
+  if (b.title !== undefined)
+    changes.title = requiredText(b.title, "Judul", 255);
   if (b.caption !== undefined) changes.caption = text(b.caption, 5000);
   if (b.image !== undefined) {
     const image = imageValue(b.image);
@@ -57,7 +59,8 @@ export async function update(req: Request, res: Response): Promise<void> {
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {
-  if (!(await gallery.findById(req.params.id))) throw httpError(404, "Foto galeri tidak ditemukan.");
+  if (!(await gallery.findById(req.params.id)))
+    throw httpError(404, "Foto galeri tidak ditemukan.");
   await gallery.remove(req.params.id);
   res.json({ message: "Foto galeri dihapus." });
 }

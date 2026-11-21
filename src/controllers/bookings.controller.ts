@@ -9,13 +9,17 @@ import { bookingStatusText, notify } from "../modules/notifications/notify.servi
 import { sweepPayments } from "../modules/notifications/sweeper";
 import {
   BOOKING_STATUS,
+  canCancelBooking,
   dayLabel,
+  daysUntil,
+  needsRefund,
   parseDays,
-  todayJakarta,
   weekdayOf,
 } from "../config/rules";
 import type { AuthedRequest } from "../types/auth";
 import { attachBookingReviews } from "./reviews.controller";
+import { readCancelInput } from "./common";
+import { phonesByIds } from "../database/users.repo";
 
 const VALID_PAYMENT_METHODS = ["qris", "transfer", "cash"];
 const VALID_STATUS: readonly string[] = BOOKING_STATUS;
@@ -75,8 +79,15 @@ export async function create(req: Request, res: Response): Promise<void> {
         `Layanan ini hanya buka hari ${dayLabel(days)}. Pilih tanggal yang sesuai.`,
       );
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateText) && dateText < todayJakarta()) {
-    throw httpError(400, "Tanggal tidak boleh sudah lewat.");
+  // Pemesanan minimal H-1: hari H sudah tidak bisa dipesan (selaras dengan aturan batal H-1).
+  const lead = daysUntil(dateText);
+  if (lead !== null && lead < 1) {
+    throw httpError(
+      400,
+      lead < 0
+        ? "Tanggal tidak boleh sudah lewat."
+        : "Pemesanan minimal H-1 sebelum jadwal. Pilih tanggal mulai besok.",
+    );
   }
 
   let guests: any = guestCount;
@@ -221,9 +232,51 @@ export async function payCash(req: Request, res: Response): Promise<void> {
   });
 }
 
+export async function cancel(req: Request, res: Response): Promise<void> {
+  const booking = await findOwnedBooking(req);
+  if (booking.status === "dibatalkan")
+    throw httpError(400, "Pendaftaran ini sudah dibatalkan.");
+  if (!canCancelBooking(booking)) {
+    const left = daysUntil(booking.date);
+    throw httpError(
+      400,
+      booking.status === "selesai"
+        ? "Pendaftaran yang sudah selesai tidak bisa dibatalkan."
+        : left !== null && left < 1
+          ? "Pembatalan hanya bisa dilakukan paling lambat H-1 sebelum jadwal."
+          : "Pendaftaran ini tidak bisa dibatalkan.",
+    );
+  }
+  const refund = needsRefund(booking);
+  const { reason, refundAccount } = readCancelInput(req.body, { refund });
+  await bookings.patch(booking.id, {
+    status: "dibatalkan",
+    cancelReason: reason,
+    refundAccount,
+    cancelledAt: new Date().toISOString(),
+  });
+  await notify(booking.userId, {
+    type: "order",
+    title: "Pendaftaran dibatalkan",
+    body: refund
+      ? `Pendaftaran ${booking.facilityName} dibatalkan. Admin akan menghubungi kamu via Email/WhatsApp untuk pengembalian dana.`
+      : `Pendaftaran ${booking.facilityName} dibatalkan.`,
+    refId: String(booking.id),
+    refType: "booking",
+  });
+  res.json({
+    message: refund
+      ? "Pendaftaran dibatalkan. Admin akan menghubungi kamu untuk pengembalian dana."
+      : "Pendaftaran dibatalkan.",
+    status: "dibatalkan",
+  });
+}
+
 export async function listAll(_req: Request, res: Response): Promise<void> {
   await sweepPayments();
-  res.json({ bookings: await bookings.list() });
+  const list = await bookings.list();
+  const phones = await phonesByIds(list.map((b) => b.userId));
+  res.json({ bookings: list.map((b) => ({ ...b, userPhone: phones.get(b.userId) || "" })) });
 }
 
 export async function updateStatus(req: Request, res: Response): Promise<void> {
@@ -232,6 +285,8 @@ export async function updateStatus(req: Request, res: Response): Promise<void> {
     throw httpError(400, "Status tidak valid.");
   const booking = await bookings.findById(req.params.id);
   if (!booking) throw httpError(404, "Booking tidak ditemukan.");
+  if (booking.status === "dibatalkan" && booking.cancelReason && status !== "dibatalkan")
+    throw httpError(409, "Pendaftaran ini sudah dibatalkan oleh pemesan, statusnya tidak bisa diubah lagi.");
   await bookings.patch(req.params.id, { status });
   if (status !== booking.status) {
     await notify(booking.userId, {

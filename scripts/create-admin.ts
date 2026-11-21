@@ -6,7 +6,9 @@ import * as users from "../src/database/users.repo";
 import { newId } from "../src/controllers/common";
 
 async function main(): Promise<void> {
-  const email = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const email = String(process.env.ADMIN_EMAIL || "")
+    .trim()
+    .toLowerCase();
   const password = String(process.env.ADMIN_PASSWORD || "");
   if (!email || password.length < 8) {
     console.error("Isi ADMIN_EMAIL dan ADMIN_PASSWORD (minimal 8 karakter).");

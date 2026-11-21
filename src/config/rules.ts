@@ -54,3 +54,45 @@ export function parseDays(v: unknown): number[] {
   }
   return [...out].sort((a, b) => a - b);
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function daysUntil(dateStr: unknown, now: Date = new Date()): number | null {
+  const d = String(dateStr ?? "").trim();
+  if (!ISO_DATE.test(d)) return null;
+  const ms = Date.parse(`${d}T00:00:00Z`) - Date.parse(`${todayJakarta(now)}T00:00:00Z`);
+  return Number.isNaN(ms) ? null : Math.round(ms / 86_400_000);
+}
+
+const BOOKING_CANCELLABLE = ["menunggu_pembayaran", "menunggu_verifikasi", "menunggu_kedatangan"];
+const TOPENG_CANCELLABLE = ["menunggu_pembayaran", "menunggu_verifikasi"];
+const TOPENG_REVIEWABLE = ["diproses", "dikirim", "selesai"];
+
+export function canCancelBooking(b: { status: string; date?: unknown }, now: Date = new Date()): boolean {
+  if (!BOOKING_CANCELLABLE.includes(b.status)) return false;
+  const left = daysUntil(b.date, now);
+  return left === null ? true : left >= 1;
+}
+
+export function canReviewBooking(b: { status: string; date?: unknown }, now: Date = new Date()): boolean {
+  if (b.status === "selesai") return true;
+  if (b.status !== "menunggu_kedatangan") return false;
+  const left = daysUntil(b.date, now);
+  return left !== null && left <= 0;
+}
+
+export function canCancelTopeng(o: { status: string }): boolean {
+  return TOPENG_CANCELLABLE.includes(o.status);
+}
+
+export function canReviewTopeng(o: { status: string }): boolean {
+  return TOPENG_REVIEWABLE.includes(o.status);
+}
+
+export function needsRefund(x: { proofFile?: unknown }): boolean {
+  return String(x.proofFile ?? "").trim().length > 0;
+}
+
+export const CANCEL_REASON_MIN = 5;
+export const CANCEL_REASON_MAX = 300;
+export const REFUND_ACCOUNT_MAX = 120;
