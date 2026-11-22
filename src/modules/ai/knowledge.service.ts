@@ -1,12 +1,12 @@
 // =============================================================================
 // KNOWLEDGE SERVICE — "perpustakaan" chatbot.
-//   1) buildCorpus() : kumpulkan dokumen (tabel knowledge_docs + konten situs)
+//   1) buildCorpus() : kumpulkan dokumen (tabel knowledge_docs + artikel, fasilitas, topeng)
 //   2) searchKnowledge() : cari potongan teks yang paling cocok dengan pertanyaan
 //   3) generalPassages() : konteks umum kalau pencarian kata kunci kosong
 // Chatbot tidak boleh menjawab dari pengetahuannya sendiri, hanya dari konteks ini.
 // =============================================================================
 import * as knowledgeModel from "../../models/knowledge.model";
-import { articles, faqs, culture } from "../../database/content.repo";
+import { articles } from "../../database/content.repo";
 import { facilities, topeng } from "../../database/layanan.repo";
 
 export interface Passage {
@@ -75,16 +75,8 @@ export async function buildCorpus(force = false): Promise<Passage[]> {
   for (const d of await safe(() => knowledgeModel.list(true), [])) {
     passages.push(...chunk(d.title, d.content));
   }
-  // 2) FAQ
-  for (const f of await safe(() => faqs.list(), [] as any[])) {
-    passages.push(...chunk(`FAQ: ${f.question}`, stripHtml(f.answer)));
-  }
-  // 3) Edukasi budaya (paragraf + timeline sejarah)
-  const c = await safe(() => culture.get(), null);
-  if (c) {
-    passages.push(...chunk("Sejarah & budaya Asmorobangun", stripHtml(c.paragraph)));
-    for (const t of c.timeline) passages.push(...chunk(`Sejarah tahun ${t.year}`, stripHtml(t.text)));
-  }
+  // 2) FAQ dan 3) sejarah: dipindah ke Dokumen Chatbot (tabel knowledge_docs),
+  //    jadi tidak dibaca lagi dari tabel faqs / culture_*.
   // 4) Artikel
   for (const a of await safe(() => articles.list(), [] as any[])) {
     passages.push(...chunk(`Artikel: ${a.title}`, stripHtml(`${a.excerpt || ""}\n${a.content || ""}`)));
@@ -162,7 +154,7 @@ export async function searchKnowledge(query: string, limit = 4): Promise<Hit[]> 
 // "Apa itu Asmorobangun?"). AI tetap hanya boleh menjawab dari konteks ini.
 export async function generalPassages(limit = 4): Promise<Hit[]> {
   const all = await buildCorpus();
-  const isHistory = (p: Passage): boolean => p.source.startsWith("Sejarah & budaya");
+  const isHistory = (p: Passage): boolean => /sejarah/i.test(p.source);
   return [...all.filter(isHistory), ...all.filter((p) => !isHistory(p))]
     .slice(0, limit)
     .map((p) => ({ ...p, score: 0 }));

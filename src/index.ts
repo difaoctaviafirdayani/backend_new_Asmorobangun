@@ -1,11 +1,12 @@
 // ===========================================================================
 // TITIK MASUK (TypeScript) — jalankan dengan:  npm run dev   atau   npm start
 // ===========================================================================
-import { PORT, HOST, JWT_IS_DEFAULT } from "./config/appConfig";
+import { PORT, HOST, JWT_IS_DEFAULT, configSummary } from "./config/appConfig";
 import { initDb } from "./database/db";
 import { initMysql } from "./database/mysql";
 
 async function start(): Promise<void> {
+  for (const line of configSummary()) console.log(line);
   initDb(); // db.json hanya dipakai sebagai sumber migrasi satu kali ke MySQL
   await initMysql(); // semua data (akun, konten, layanan, registrasi, forum, hasil AI) di MySQL
 
