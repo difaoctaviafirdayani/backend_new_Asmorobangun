@@ -1,8 +1,10 @@
 // =============================================================================
-// LLM SERVICE — satu pintu untuk memanggil AI. Penyedia dipilih lewat AI_PROVIDER
-// di .env ("gemini" atau "groq"). Kode lain cukup panggil generateText().
+// LLM SERVICE — satu pintu untuk memanggil AI. Penyedia utama dipilih lewat AI_PROVIDER
+// di .env ("gemini" atau "groq"). Kalau penyedia utama gagal (timeout, key salah, kuota,
+// model tidak ada) dan penyedia lain punya API key, otomatis dicoba penyedia cadangan.
+// Kode lain cukup panggil generateText().
 // =============================================================================
-import { AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL, GROQ_API_KEY, GROQ_MODEL } from "../../config/appConfig";
+import { AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL, GROQ_API_KEY, GROQ_MODEL, type AiProvider } from "../../config/appConfig";
 import { httpError } from "../../middleware/error";
 
 export interface LlmMessage {
@@ -27,9 +29,18 @@ const TIMEOUT_MS = 20000;
 export const activeProvider = AI_PROVIDER;
 export const activeModel: string = AI_PROVIDER === "gemini" ? GEMINI_MODEL : GROQ_MODEL;
 export const activeModelLabel: string = `${AI_PROVIDER}:${activeModel}`;
-export const isAiConfigured = (): boolean => (AI_PROVIDER === "gemini" ? !!GEMINI_API_KEY : !!GROQ_API_KEY);
 
-async function postJson(url: string, headers: Record<string, string>, body: unknown, fetchFn: typeof fetch): Promise<any> {
+const hasKey = (p: AiProvider): boolean => (p === "gemini" ? !!GEMINI_API_KEY : !!GROQ_API_KEY);
+// AI dianggap siap kalau SALAH SATU penyedia punya key.
+export const isAiConfigured = (): boolean => hasKey("groq") || hasKey("gemini");
+
+async function postJson(
+  provider: AiProvider,
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+  fetchFn: typeof fetch
+): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -42,14 +53,17 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
     const data: any = await res.json().catch(() => ({}));
     if (!res.ok) {
       // Isi error dicatat di log server (bukan dikirim ke klien) supaya mudah dicari penyebabnya.
-      console.error(`${AI_PROVIDER} error status:`, res.status, JSON.stringify(data?.error ?? data).slice(0, 500));
+      console.error(`[AI] ${provider} error status:`, res.status, JSON.stringify(data?.error ?? data).slice(0, 500));
       throw httpError(502, `Layanan AI menolak permintaan (kode ${res.status}).`);
     }
     return data;
   } catch (err: any) {
     if (err?.status) throw err;
-    if (err?.name === "AbortError") throw httpError(504, "AI terlalu lama merespons.");
-    console.error(`${AI_PROVIDER} gagal dihubungi:`, err?.message);
+    if (err?.name === "AbortError") {
+      console.error(`[AI] ${provider} timeout setelah ${TIMEOUT_MS / 1000} detik.`);
+      throw httpError(504, "AI terlalu lama merespons.");
+    }
+    console.error(`[AI] ${provider} gagal dihubungi:`, err?.cause?.code || err?.message);
     throw httpError(502, "Gagal menghubungi layanan AI.");
   } finally {
     clearTimeout(timer);
@@ -58,14 +72,19 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
 
 async function callGroq(req: LlmRequest, fetchFn: typeof fetch): Promise<string> {
   if (!GROQ_API_KEY) throw httpError(503, "GROQ_API_KEY belum diisi di file .env.");
+  const isReasoning = /gpt-oss|qwen3/i.test(GROQ_MODEL);
   const data = await postJson(
+    "groq",
     GROQ_URL,
     { Authorization: `Bearer ${GROQ_API_KEY}` },
     {
       model: GROQ_MODEL,
       messages: [{ role: "system", content: req.system }, ...req.messages],
       temperature: req.temperature ?? 0.2,
-      max_tokens: req.maxTokens ?? 1024,
+      // Model "berpikir" memakai sebagian token untuk berpikir, jadi jatahnya dinaikkan.
+      max_tokens: Math.max(req.maxTokens ?? 1024, isReasoning ? 2048 : 0),
+      // Batasi usaha berpikir supaya cepat dan jawabannya tidak kosong.
+      ...(/gpt-oss/i.test(GROQ_MODEL) ? { reasoning_effort: "low" } : {}),
       ...(req.json ? { response_format: { type: "json_object" } } : {}),
     },
     fetchFn
@@ -83,6 +102,7 @@ async function callGemini(req: LlmRequest, fetchFn: typeof fetch): Promise<strin
   const thinkingConfig = /2\.5-flash/.test(GEMINI_MODEL) ? { thinkingConfig: { thinkingBudget: 0 } } : {};
 
   const data = await postJson(
+    "gemini",
     `${GEMINI_URL}/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
     { "x-goog-api-key": GEMINI_API_KEY },
     {
@@ -111,6 +131,19 @@ async function callGemini(req: LlmRequest, fetchFn: typeof fetch): Promise<strin
   return text;
 }
 
-export function generateText(req: LlmRequest, fetchFn: typeof fetch = fetch): Promise<string> {
-  return AI_PROVIDER === "gemini" ? callGemini(req, fetchFn) : callGroq(req, fetchFn);
+const call = (p: AiProvider, req: LlmRequest, fetchFn: typeof fetch): Promise<string> =>
+  p === "gemini" ? callGemini(req, fetchFn) : callGroq(req, fetchFn);
+
+export async function generateText(req: LlmRequest, fetchFn: typeof fetch = fetch): Promise<string> {
+  const backup: AiProvider = AI_PROVIDER === "gemini" ? "groq" : "gemini";
+  try {
+    return await call(AI_PROVIDER, req, fetchFn);
+  } catch (err: any) {
+    // Coba penyedia cadangan hanya kalau key-nya ada dan kegagalan bukan salah input pengguna.
+    if (hasKey(backup) && (err?.status === 502 || err?.status === 503 || err?.status === 504)) {
+      console.warn(`[AI] ${AI_PROVIDER} gagal (${err.status}), mencoba cadangan: ${backup}.`);
+      return call(backup, req, fetchFn);
+    }
+    throw err;
+  }
 }

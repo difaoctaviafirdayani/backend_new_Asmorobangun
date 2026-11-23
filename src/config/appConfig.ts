@@ -77,12 +77,14 @@ export const ABSOLUTE_URLS: boolean = process.env.ABSOLUTE_URLS === "true";
 // ---------------------------------------------------------------------------
 export type AiProvider = "gemini" | "groq";
 
-export const GEMINI_API_KEY: string = process.env.GEMINI_API_KEY || "";
-export const GEMINI_MODEL: string = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-export const GROQ_API_KEY: string = process.env.GROQ_API_KEY || "";
-export const GROQ_MODEL: string = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+// Bersihkan nilai .env dari spasi, tanda kutip, dan karakter \r (sering muncul di Windows).
+const clean = (v: string | undefined): string => (v ?? "").replace(/\r/g, "").trim().replace(/^["']+|["']+$/g, "").trim();
 
-const requestedProvider = (process.env.AI_PROVIDER || "").trim().toLowerCase();
+export const GEMINI_API_KEY: string = clean(process.env.GEMINI_API_KEY);
+export const GEMINI_MODEL: string = clean(process.env.GEMINI_MODEL) || "gemini-3.5-flash-lite";
+export const GROQ_API_KEY: string = clean(process.env.GROQ_API_KEY);
+export const GROQ_MODEL: string = clean(process.env.GROQ_MODEL) || "openai/gpt-oss-120b";
+const requestedProvider = clean(process.env.AI_PROVIDER).toLowerCase();
 export const AI_PROVIDER: AiProvider =
   requestedProvider === "gemini" || requestedProvider === "groq"
     ? requestedProvider
@@ -105,3 +107,22 @@ export const CLOUDINARY = {
 
 // Push notification (Firebase). Isi JSON service account (boleh base64). Kosong = push dimatikan.
 export const FIREBASE_SERVICE_ACCOUNT: string = process.env.FIREBASE_SERVICE_ACCOUNT || "";
+
+// Ringkasan konfigurasi untuk log saat server mulai (tanpa menampilkan password / key).
+export function configSummary(): string[] {
+  const envFileState = fs.existsSync(envPath) ? "ditemukan" : "TIDAK ADA";
+  const ai =
+    AI_PROVIDER === "groq"
+      ? `groq (${GROQ_MODEL}) key ${GROQ_API_KEY ? `terisi, panjang ${GROQ_API_KEY.length}` : "KOSONG"}`
+      : `gemini (${GEMINI_MODEL}) key ${GEMINI_API_KEY ? `terisi, panjang ${GEMINI_API_KEY.length}` : "KOSONG"}`;
+  const lines = [
+    `File env : ${ENV_FILE} (${envFileState}) | APP_ENV=${APP_ENV}`,
+    `Database : ${DB.USER}@${DB.HOST}:${DB.PORT}/${DB.NAME} (user panjang ${DB.USER.length}, password panjang ${DB.PASSWORD.length}, SSL ${DB.SSL})`,
+    `AI       : ${ai}`,
+  ];
+  const isLocalHost = DB.HOST === "127.0.0.1" || DB.HOST === "localhost";
+  if (isLocalHost && DB.USER.includes(".")) {
+    lines.push("PERINGATAN: DB_HOST lokal tetapi DB_USER berbentuk user TiDB (ada titik). MySQL lokal pasti menolaknya. Ganti DB_USER=root dan DB_PASSWORD sesuai MySQL laptop.");
+  }
+  return lines;
+}

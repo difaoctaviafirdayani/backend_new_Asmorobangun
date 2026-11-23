@@ -93,10 +93,14 @@ export function validateAnalysis(raw: string): Validation {
   let data: any;
   try {
     // Jaga-jaga kalau AI tetap membungkus dengan ```json ... ```
-    const cleaned = String(raw)
+    let cleaned = String(raw)
       .trim()
       .replace(/^```(?:json)?\s*/i, "")
       .replace(/\s*```$/, "");
+    // Model "berpikir" kadang menambah teks di luar JSON: ambil dari "{" pertama sampai "}" terakhir.
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start > 0 || (end >= 0 && end < cleaned.length - 1)) cleaned = cleaned.slice(start, end + 1);
     data = JSON.parse(cleaned);
   } catch {
     return { ok: false, error: "keluaran AI bukan JSON yang valid" };
@@ -156,7 +160,7 @@ export async function analyzeText(
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: buildUserPrompt(anonymizedText) }],
         temperature: 0.2,
-        maxTokens: 1024, // sebelumnya 600
+        maxTokens: 1024,
         json: true,
         geminiSchema: RESPONSE_SCHEMA,
       },
