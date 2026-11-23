@@ -44,6 +44,13 @@ export async function findById(id: string): Promise<User | null> {
 }
 
 // Lempar error dengan code "ER_DUP_ENTRY" kalau email sudah terdaftar.
+export async function phonesByIds(ids: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return new Map();
+  const [rows] = await getPool().query("SELECT id, phone FROM users WHERE id IN (?)", [unique]);
+  return new Map((rows as any[]).filter((r) => r.phone).map((r) => [String(r.id), String(r.phone)]));
+}
+
 export async function createUser(u: NewUser): Promise<void> {
   await getPool().query(
     `INSERT INTO users (id, name, email, phone, password, role, avatar, token_version, created_at)

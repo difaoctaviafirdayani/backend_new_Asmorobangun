@@ -12,8 +12,10 @@ export async function get(_req: Request, res: Response): Promise<void> {
 // PUT /api/culture  { paragraph?, timeline?: [{ id?, year, text }] }  (admin)
 export async function update(req: Request, res: Response): Promise<void> {
   const { paragraph, timeline } = req.body || {};
-  if (paragraph !== undefined && typeof paragraph !== "string") throw httpError(400, "Paragraf harus berupa teks.");
-  if (timeline !== undefined && !Array.isArray(timeline)) throw httpError(400, "Linimasa harus berupa daftar.");
+  if (paragraph !== undefined && typeof paragraph !== "string")
+    throw httpError(400, "Paragraf harus berupa teks.");
+  if (timeline !== undefined && !Array.isArray(timeline))
+    throw httpError(400, "Linimasa harus berupa daftar.");
   const cleanTimeline = Array.isArray(timeline)
     ? timeline.map((t: any) => ({
         id: typeof t?.id === "string" && t.id ? t.id.slice(0, 30) : undefined,
@@ -21,7 +23,10 @@ export async function update(req: Request, res: Response): Promise<void> {
         text: requiredText(String(t?.text ?? ""), "Keterangan linimasa", 5000),
       }))
     : undefined;
-  await culture.update({ paragraph: paragraph?.slice(0, 20000), timeline: cleanTimeline });
+  await culture.update({
+    paragraph: paragraph?.slice(0, 20000),
+    timeline: cleanTimeline,
+  });
   res.json(await culture.get());
 }
 
@@ -36,8 +41,10 @@ export async function addTimeline(req: Request, res: Response): Promise<void> {
 }
 
 // DELETE /api/culture/timeline/:id  (admin)
-export async function removeTimeline(req: Request, res: Response): Promise<void> {
+export async function removeTimeline(
+  req: Request,
+  res: Response,
+): Promise<void> {
   await culture.removeTimeline(req.params.id);
   res.json({ message: "Titik linimasa dihapus." });
 }
-

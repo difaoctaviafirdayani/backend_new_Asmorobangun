@@ -1,6 +1,8 @@
 // ===========================================================================
 // ULASAN DARI "PESANAN SAYA"
-// Ulasan hanya boleh dibuat oleh pemilik booking/pesanan yang berstatus "selesai".
+// Ulasan hanya boleh dibuat pemilik booking/pesanan yang sudah memasuki tahap ulasan:
+//  - layanan : hari H (atau lewat) untuk booking terkonfirmasi, atau status "selesai"
+//  - topeng  : sejak status "diproses" (diproses, dikirim, selesai)
 // Satu ulasan per booking/pesanan. Pemilik boleh mengubah dan menghapus ulasannya.
 // Ulasan tampil di halaman layanan (booking) dan katalog topeng (pesanan).
 // ===========================================================================
@@ -11,7 +13,13 @@ import {
   reviews,
   topengReviews,
 } from "../database/layanan.repo";
-import { MAX_REVIEW_IMAGES } from "../config/rules";
+import {
+  MAX_REVIEW_IMAGES,
+  canCancelBooking,
+  canCancelTopeng,
+  canReviewBooking,
+  canReviewTopeng,
+} from "../config/rules";
 import { bookings, orders } from "../database/registrasi.repo";
 import { httpError } from "../middleware/error";
 import { uploadedUrl } from "../utils/upload";
@@ -25,6 +33,7 @@ interface Adapter {
   /** nama parameter id di URL */
   param: string;
   loadSource(id: string): Promise<Row | null>;
+  canReview(source: Row): boolean;
   findReview(sourceId: string): Promise<Row | null>;
   insert(review: Row): Promise<void>;
   patch(id: string, changes: Row): Promise<void>;
@@ -40,6 +49,7 @@ const bookingAdapter: Adapter = {
   label: "booking",
   param: "id",
   loadSource: (id) => bookings.findById(id),
+  canReview: (src) => canReviewBooking(src as { status: string; date?: unknown }),
   findReview: (id) => reviews.findByBooking(id),
   insert: (r) => reviews.insert(r),
   patch: (id, c) => reviews.patch(id, c),
@@ -60,6 +70,7 @@ const orderAdapter: Adapter = {
   label: "pesanan",
   param: "orderId",
   loadSource: (id) => orders.findById(id),
+  canReview: (src) => canReviewTopeng(src as { status: string }),
   findReview: (id) => topengReviews.findByOrder(id),
   insert: (r) => topengReviews.insert(r),
   patch: (id, c) => topengReviews.patch(id, c),
@@ -110,10 +121,12 @@ function make(a: Adapter) {
     async create(req: Request, res: Response): Promise<void> {
       const { user } = req as AuthedRequest;
       const src = await ownedSource(a, req);
-      if (src.status !== "selesai") {
+      if (!a.canReview(src)) {
         throw httpError(
           400,
-          `Ulasan hanya bisa ditulis setelah ${a.label} berstatus selesai.`,
+          a.label === "booking"
+            ? "Ulasan baru bisa ditulis saat hari layanan tiba atau setelah selesai."
+            : "Ulasan baru bisa ditulis setelah pesanan mulai diproses.",
         );
       }
       if (await a.findReview(src.id))
@@ -215,15 +228,24 @@ function make(a: Adapter) {
 export const bookingReview = make(bookingAdapter);
 export const orderReview = make(orderAdapter);
 
-/** Tempelkan ulasan milik user ke daftar booking/pesanan (field `review`, atau null). */
+/** Flag aksi untuk UI: tombol Batalkan / Tulis Ulasan. Dihitung di server (zona Asia/Jakarta). */
+export function bookingActions(b: Row): { canCancel: boolean; canReview: boolean } {
+  return { canCancel: canCancelBooking(b as { status: string; date?: unknown }), canReview: canReviewBooking(b as { status: string; date?: unknown }) };
+}
+
+export function orderActions(o: Row): { canCancel: boolean; canReview: boolean } {
+  return { canCancel: canCancelTopeng(o as { status: string }), canReview: canReviewTopeng(o as { status: string }) };
+}
+
+/** Tempelkan ulasan milik user + flag aksi ke daftar booking/pesanan (`review`, `canCancel`, `canReview`). */
 export async function attachBookingReviews(list: Row[]): Promise<Row[]> {
   const found = await reviews.listByBookings(list.map((b) => b.id));
   const byId = new Map(found.map((r) => [r.bookingId, r]));
-  return list.map((b) => ({ ...b, review: byId.get(b.id) || null }));
+  return list.map((b) => ({ ...b, ...bookingActions(b), review: byId.get(b.id) || null }));
 }
 
 export async function attachOrderReviews(list: Row[]): Promise<Row[]> {
   const found = await topengReviews.listByOrders(list.map((o) => o.id));
   const byId = new Map(found.map((r) => [r.orderId, r]));
-  return list.map((o) => ({ ...o, review: byId.get(o.id) || null }));
+  return list.map((o) => ({ ...o, ...orderActions(o), review: byId.get(o.id) || null }));
 }

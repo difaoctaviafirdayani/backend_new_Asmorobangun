@@ -1,13 +1,14 @@
 // ===========================================================================
 // CONTROLLER CHATBOT ASISTEN SANGGAR — POST /api/ai/chat  (tanpa login, dibatasi per IP)
 // Hanya menjawab dari dokumen Asmorobangun (lihat knowledge.service.ts).
-// Kalau tidak ada dokumen yang cocok, AI TIDAK dipanggil.
+// Kalau tidak ada dokumen yang cocok, dipakai konteks umum; AI tetap diperintah
+// menjawab "belum tersedia" kalau konteks tidak cukup.
 // ===========================================================================
 import type { Request, Response } from "express";
 import { httpError } from "../middleware/error";
 import { createLimiter, tooManyMessage } from "../middleware/rateLimit";
 import { generateText, isAiConfigured, type LlmMessage } from "../modules/ai/llm.service";
-import { searchKnowledge } from "../modules/ai/knowledge.service";
+import { searchKnowledge, generalPassages } from "../modules/ai/knowledge.service";
 import { prepareForPrompt } from "../security/promptGuard";
 
 const limiter = createLimiter({ windowMs: 10 * 60 * 1000, max: 20 }); // 20 pesan / 10 menit / IP
@@ -43,12 +44,24 @@ export async function chat(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const hits = await searchKnowledge(prepared.text, 4);
+  let hits = await searchKnowledge(prepared.text, 4);
+  let usedGeneral = false;
+
   if (!hits.length) {
-    res.json({ reply: NOT_FOUND_REPLY, mode: "no_source", sources: [] });
-    return;
+    // Tanpa AI tidak ada yang bisa dijawab. Dengan AI, coba konteks umum dulu;
+    // kalau ternyata tidak cukup, prompt memerintahkan AI bilang "belum tersedia".
+    if (!isAiConfigured()) {
+      res.json({ reply: NOT_FOUND_REPLY, mode: "no_source", sources: [] });
+      return;
+    }
+    hits = await generalPassages(4);
+    usedGeneral = true;
+    if (!hits.length) {
+      res.json({ reply: NOT_FOUND_REPLY, mode: "no_source", sources: [] });
+      return;
+    }
   }
-  const sources = Array.from(new Set(hits.map((h) => h.source)));
+  const sources = usedGeneral ? [] : Array.from(new Set(hits.map((h) => h.source)));
 
   // AI belum dikonfigurasi: tetap beri jawaban dari dokumen yang paling cocok.
   if (!isAiConfigured()) {
@@ -77,7 +90,7 @@ export async function chat(req: Request, res: Response): Promise<void> {
       { role: "user", content: `<konteks>\n${context}\n</konteks>\n<pertanyaan>\n${prepared.text}\n</pertanyaan>` },
     ],
     temperature: 0.2,
-    maxTokens: 500,
+    maxTokens: 1024, // sebelumnya 500
   });
   res.json({ reply: reply.trim(), mode: "ai", sources });
 }

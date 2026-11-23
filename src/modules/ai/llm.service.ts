@@ -41,13 +41,15 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
     });
     const data: any = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error(`${AI_PROVIDER} error status:`, res.status); // isi error tidak dikirim ke klien
+      // Isi error dicatat di log server (bukan dikirim ke klien) supaya mudah dicari penyebabnya.
+      console.error(`${AI_PROVIDER} error status:`, res.status, JSON.stringify(data?.error ?? data).slice(0, 500));
       throw httpError(502, `Layanan AI menolak permintaan (kode ${res.status}).`);
     }
     return data;
   } catch (err: any) {
     if (err?.status) throw err;
     if (err?.name === "AbortError") throw httpError(504, "AI terlalu lama merespons.");
+    console.error(`${AI_PROVIDER} gagal dihubungi:`, err?.message);
     throw httpError(502, "Gagal menghubungi layanan AI.");
   } finally {
     clearTimeout(timer);
@@ -63,7 +65,7 @@ async function callGroq(req: LlmRequest, fetchFn: typeof fetch): Promise<string>
       model: GROQ_MODEL,
       messages: [{ role: "system", content: req.system }, ...req.messages],
       temperature: req.temperature ?? 0.2,
-      max_tokens: req.maxTokens ?? 600,
+      max_tokens: req.maxTokens ?? 1024,
       ...(req.json ? { response_format: { type: "json_object" } } : {}),
     },
     fetchFn
@@ -75,6 +77,11 @@ async function callGroq(req: LlmRequest, fetchFn: typeof fetch): Promise<string>
 
 async function callGemini(req: LlmRequest, fetchFn: typeof fetch): Promise<string> {
   if (!GEMINI_API_KEY) throw httpError(503, "GEMINI_API_KEY belum diisi di file .env.");
+
+  // Model 2.5-flash memakai token untuk "berpikir" yang ikut mengurangi jatah jawaban.
+  // Dimatikan supaya jawaban tidak kosong/kepotong.
+  const thinkingConfig = /2\.5-flash/.test(GEMINI_MODEL) ? { thinkingConfig: { thinkingBudget: 0 } } : {};
+
   const data = await postJson(
     `${GEMINI_URL}/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
     { "x-goog-api-key": GEMINI_API_KEY },
@@ -83,15 +90,24 @@ async function callGemini(req: LlmRequest, fetchFn: typeof fetch): Promise<strin
       contents: req.messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
       generationConfig: {
         temperature: req.temperature ?? 0.2,
-        maxOutputTokens: req.maxTokens ?? 600,
+        maxOutputTokens: req.maxTokens ?? 1024,
+        ...thinkingConfig,
         ...(req.json ? { responseMimeType: "application/json" } : {}),
         ...(req.json && req.geminiSchema ? { responseSchema: req.geminiSchema } : {}),
       },
     },
     fetchFn
   );
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (typeof text !== "string" || !text.trim()) throw httpError(502, "AI tidak memberikan jawaban.");
+
+  // Gabungkan semua bagian teks (bukan hanya parts[0]) dan lewati bagian "thought".
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts)
+    ? parts
+        .filter((p: any) => typeof p?.text === "string" && !p.thought)
+        .map((p: any) => p.text)
+        .join("")
+    : "";
+  if (!text.trim()) throw httpError(502, "AI tidak memberikan jawaban.");
   return text;
 }
 

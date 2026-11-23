@@ -1,7 +1,7 @@
 // REPOSITORY KONTEN — artikel, pengumuman, galeri, FAQ, edukasi budaya (MySQL).
 import { nanoid } from "nanoid";
 import { getPool } from "./mysql";
-import { TABLE_OPTS, toIso, toDate } from "./table";
+import { TABLE_OPTS, toIso, toDate, escapeLike } from "./table";
 import { readDB } from "./db";
 
 type Row = Record<string, any>;
@@ -76,6 +76,46 @@ function makeContentRepo(table: string) {
         [limit, offset]
       );
       const [cnt] = await getPool().query(`SELECT COUNT(*) AS total FROM \`${table}\``);
+      return {
+        items: (rows as Row[]).map((r) => rowToObj(spec, r) as Row),
+        total: Number((cnt as any)[0].total),
+      };
+    },
+        // Cari + filter + urut + paginasi di SQL. limit kosong = tanpa batas (respons lama).
+    async query(
+      opts: {
+        search?: string;
+        searchCols?: string[];
+        filters?: Record<string, string | undefined>;
+        sort?: string;
+        dir?: "ASC" | "DESC";
+        limit?: number;
+        offset?: number;
+      } = {}
+    ): Promise<{ items: Row[]; total: number }> {
+      const { search = "", searchCols = [], filters = {}, sort, dir = "DESC", limit, offset = 0 } = opts;
+      const where: string[] = [];
+      const params: unknown[] = [];
+      const cols = searchCols.filter((c) => spec.cols.includes(c));
+      if (search && cols.length) {
+        where.push("(" + cols.map((c) => `\`${c}\` LIKE ?`).join(" OR ") + ")");
+        cols.forEach(() => params.push(`%${escapeLike(search)}%`));
+      }
+      for (const [col, val] of Object.entries(filters)) {
+        if (val && spec.cols.includes(col)) {
+          where.push(`\`${col}\` = ?`); // collation utf8mb4_unicode_ci: tidak peka huruf besar/kecil
+          params.push(val);
+        }
+      }
+      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      const orderSql =
+        sort && spec.cols.includes(sort) ? `\`${sort}\` ${dir === "ASC" ? "ASC" : "DESC"}, id` : `${spec.order}, id`;
+      const pageSql = limit ? "LIMIT ? OFFSET ?" : "";
+      const [rows] = await getPool().query(
+        `SELECT ${colList} FROM \`${table}\` ${whereSql} ORDER BY ${orderSql} ${pageSql}`,
+        limit ? [...params, limit, offset] : params
+      );
+      const [cnt] = await getPool().query(`SELECT COUNT(*) AS total FROM \`${table}\` ${whereSql}`, params);
       return {
         items: (rows as Row[]).map((r) => rowToObj(spec, r) as Row),
         total: Number((cnt as any)[0].total),

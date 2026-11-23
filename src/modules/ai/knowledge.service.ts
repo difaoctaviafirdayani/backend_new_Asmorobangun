@@ -2,7 +2,8 @@
 // KNOWLEDGE SERVICE — "perpustakaan" chatbot.
 //   1) buildCorpus() : kumpulkan dokumen (tabel knowledge_docs + konten situs)
 //   2) searchKnowledge() : cari potongan teks yang paling cocok dengan pertanyaan
-// Kalau tidak ada potongan yang cocok, chatbot TIDAK boleh menjawab dari pengetahuannya sendiri.
+//   3) generalPassages() : konteks umum kalau pencarian kata kunci kosong
+// Chatbot tidak boleh menjawab dari pengetahuannya sendiri, hanya dari konteks ini.
 // =============================================================================
 import * as knowledgeModel from "../../models/knowledge.model";
 import { articles, faqs, culture } from "../../database/content.repo";
@@ -107,10 +108,12 @@ export async function buildCorpus(force = false): Promise<Passage[]> {
 // ----------------------------------------------------------------------------
 // Pencarian kata kunci sederhana (tanpa layanan tambahan): bobot IDF + cakupan kata.
 // ----------------------------------------------------------------------------
+// Catatan: "sanggar" dan "asmorobangun" sengaja TIDAK dimasukkan sebagai stopword,
+// supaya pertanyaan seperti "Apa itu Sanggar Asmorobangun?" tetap punya kata kunci.
 const STOPWORDS = new Set(
   ("yang dan di ke dari untuk dengan pada ini itu atau adalah apa apakah siapa kapan dimana mana bagaimana berapa kenapa mengapa " +
     "ada tidak bisa dapat akan sudah saya aku kamu anda kami kita dong ya nih sih deh lah kah tolong mohon minta tanya info " +
-    "sanggar asmorobangun mau ingin boleh gimana gak nggak juga lebih sangat banyak").split(" ")
+    "mau ingin boleh gimana gak nggak juga lebih sangat banyak").split(" ")
 );
 
 export function tokenize(text: string): string[] {
@@ -123,7 +126,7 @@ export function tokenize(text: string): string[] {
     .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
 }
 
-export const MIN_COVERAGE = 0.34; // minimal sepertiga kata kunci bermakna harus ketemu di dokumen
+export const MIN_COVERAGE = 0.2; // minimal seperlima bobot kata kunci harus ketemu di dokumen (sebelumnya 0.34)
 
 export function searchPassages(query: string, passages: Passage[], limit = 4): Hit[] {
   const qTokens = Array.from(new Set(tokenize(query)));
@@ -153,4 +156,14 @@ export function searchPassages(query: string, passages: Passage[], limit = 4): H
 
 export async function searchKnowledge(query: string, limit = 4): Promise<Hit[]> {
   return searchPassages(query, await buildCorpus(), limit);
+}
+
+// Dipakai kalau pencarian kata kunci tidak menemukan apa-apa (misal pertanyaan umum
+// "Apa itu Asmorobangun?"). AI tetap hanya boleh menjawab dari konteks ini.
+export async function generalPassages(limit = 4): Promise<Hit[]> {
+  const all = await buildCorpus();
+  const isHistory = (p: Passage): boolean => p.source.startsWith("Sejarah & budaya");
+  return [...all.filter(isHistory), ...all.filter((p) => !isHistory(p))]
+    .slice(0, limit)
+    .map((p) => ({ ...p, score: 0 }));
 }

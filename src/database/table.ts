@@ -21,6 +21,9 @@ export function toDate(v: any): Date {
 
 const q = (name: string): string => `\`${name}\``;
 
+// Escape karakter khusus LIKE (% _ \) supaya pencarian "50%" tidak dianggap wildcard
+export const escapeLike = (s: string): string => s.replace(/[\\%_]/g, "\\$&");
+
 /**
  * spec:
  *  table   nama tabel
@@ -41,10 +44,20 @@ export interface RepoSpec {
   extra?: string | null;
 }
 
+export interface QueryOpts {
+  search?: string;
+  searchFields?: string[]; // nama field camelCase
+  sort?: string; // nama field camelCase
+  dir?: "ASC" | "DESC";
+  limit?: number;
+  offset?: number;
+}
+
 export interface Repo {
   spec: RepoSpec;
   rowToObj(row: Row | null | undefined): Row | null;
   list(opts?: { where?: string; params?: unknown[]; orderBy?: string }): Promise<Row[]>;
+  query(opts?: QueryOpts): Promise<{ items: Row[]; total: number }>;
   findById(id: string): Promise<Row | null>;
   insert(obj: Row, conn?: { query: (sql: string, params?: unknown[]) => Promise<[any, any]> }): Promise<void>;
   patch(id: string, changes: Row): Promise<void>;
@@ -106,6 +119,29 @@ export function makeRepo(spec: RepoSpec): Repo {
       const sql = `SELECT ${selectList} FROM ${q(table)} ${where ? `WHERE ${where}` : ""} ${orderBy ? `ORDER BY ${orderBy}` : ""}`;
       const [rows] = await getPool().query(sql, params);
       return (rows as Row[]).map((r) => rowToObj(r) as Row);
+    },
+
+    // Cari + urutkan + paginasi LANGSUNG di SQL (bukan ambil semua lalu filter di memori)
+    async query({ search = "", searchFields = [], sort, dir = "ASC", limit, offset = 0 } = {}) {
+      const where: string[] = [];
+      const params: unknown[] = [];
+      const cols = searchFields.filter((k) => keys.includes(k));
+      if (search && cols.length) {
+        where.push("(" + cols.map((k) => `${q(fields[k])} LIKE ?`).join(" OR ") + ")");
+        cols.forEach(() => params.push(`%${escapeLike(search)}%`));
+      }
+      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      const sortKey = sort && keys.includes(sort) ? sort : null; // hanya kolom yang dikenal (aman dari injection)
+      const orderSql = sortKey
+        ? `ORDER BY ${q(fields[sortKey])} ${dir === "DESC" ? "DESC" : "ASC"}, ${q(fields.id)}`
+        : `ORDER BY ${order ? order + ", " : ""}${q(fields.id)}`;
+      const pageSql = limit ? "LIMIT ? OFFSET ?" : "";
+      const [rows] = await getPool().query(
+        `SELECT ${selectList} FROM ${q(table)} ${whereSql} ${orderSql} ${pageSql}`,
+        limit ? [...params, limit, offset] : params
+      );
+      const [[{ total }]] = await getPool().query(`SELECT COUNT(*) AS total FROM ${q(table)} ${whereSql}`, params);
+      return { items: (rows as Row[]).map((r) => rowToObj(r) as Row), total: Number(total) };
     },
 
     async findById(id) {

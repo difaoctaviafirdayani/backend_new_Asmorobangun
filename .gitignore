@@ -8,3 +8,6 @@ uploads/avatars/*
 .env
 .env.development
 .env.production
+data/
+.github/data/
+*.sql

@@ -16,16 +16,30 @@ import { currentUser, newId, text } from "./common";
 const KIND = "forum_analysis";
 
 // POST /api/ai/analyze/thread/:id
-export async function analyzeThread(req: Request, res: Response): Promise<void> {
+export async function analyzeThread(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const thread = await threads.getWithReplies(req.params.id);
   if (!thread) throw httpError(404, "Diskusi tidak ditemukan.");
 
   const replies: Array<Record<string, any>> = thread.replies || [];
-  const names = [thread.userName, ...replies.map((r) => r.userName)].filter(Boolean);
-  const combined = [`Judul: ${thread.title}`, `Isi: ${thread.content}`, ...replies.map((r, i) => `Balasan ${i + 1}: ${r.content}`)].join("\n");
+  const names = [thread.userName, ...replies.map((r) => r.userName)].filter(
+    Boolean,
+  );
+  const combined = [
+    `Judul: ${thread.title}`,
+    `Isi: ${thread.content}`,
+    ...replies.map((r, i) => `Balasan ${i + 1}: ${r.content}`),
+  ].join("\n");
 
   const prepared = prepareForPrompt(combined, { names, maxLen: 6000 });
-  const base = { id: newId("ai"), kind: KIND, sourceId: thread.id, sourceTitle: String(thread.title).slice(0, 255) };
+  const base = {
+    id: newId("ai"),
+    kind: KIND,
+    sourceId: thread.id,
+    sourceTitle: String(thread.title).slice(0, 255),
+  };
 
   // Ada upaya prompt injection -> JANGAN kirim ke AI, catat sebagai "blocked".
   if (prepared.injection.flagged) {
@@ -40,7 +54,11 @@ export async function analyzeThread(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  if (!isAiConfigured()) throw httpError(503, "Penyedia AI belum dikonfigurasi (isi API key di file .env).");
+  if (!isAiConfigured())
+    throw httpError(
+      503,
+      "Penyedia AI belum dikonfigurasi (isi API key di file .env).",
+    );
   const { value } = await analyzeText(prepared.text);
   const item = await aiRepo.create({
     ...base,
@@ -53,18 +71,22 @@ export async function analyzeThread(req: Request, res: Response): Promise<void> 
 
 // GET /api/ai/results?status=pending|approved|rejected|blocked
 export async function listResults(req: Request, res: Response): Promise<void> {
-  res.json(await aiRepo.list(text(req.query.status as string, 20) || undefined));
+  res.json(
+    await aiRepo.list(text(req.query.status as string, 20) || undefined),
+  );
 }
 
 // PATCH /api/ai/results/:id/verify
 export async function verifyResult(req: Request, res: Response): Promise<void> {
   const me = currentUser(req.user);
   const status = req.body?.status;
-  if (status !== "approved" && status !== "rejected") throw httpError(400, 'Status harus "approved" atau "rejected".');
+  if (status !== "approved" && status !== "rejected")
+    throw httpError(400, 'Status harus "approved" atau "rejected".');
 
   const current = await aiRepo.findById(req.params.id);
   if (!current) throw httpError(404, "Hasil AI tidak ditemukan.");
-  if (current.status !== "pending") throw httpError(409, "Hasil ini sudah diverifikasi atau diblokir.");
+  if (current.status !== "pending")
+    throw httpError(409, "Hasil ini sudah diverifikasi atau diblokir.");
 
   const note = text(req.body?.note, 255) || null;
   res.json(await aiRepo.verify(current.id, { status, adminId: me.id, note }));

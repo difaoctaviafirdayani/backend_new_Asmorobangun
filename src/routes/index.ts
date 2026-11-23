@@ -24,12 +24,22 @@ import statsRoutes from "./stats.routes";
 import uploadsRoutes from "./uploads.routes";
 import logsRoutes from "./logs.routes";
 import knowledgeRoutes from "./knowledge.routes";
+import { asyncHandler } from "../middleware/error";
+import { getPool } from "../database/mysql";
 
 const router = Router();
 
 router.get("/health", (_req, res) => {
   res.json({ ok: true, name: "Asmorobangun API" });
 });
+
+router.get(
+  "/health/db",
+  asyncHandler(async (_req, res) => {
+    await getPool().query("SELECT 1");
+    res.json({ ok: true, db: "up", uptimeSeconds: Math.round(process.uptime()) });
+  }),
+);
 
 // 1. AKUN ................ src/modules/auth
 router.use("/auth", authRoutes);

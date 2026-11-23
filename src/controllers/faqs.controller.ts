@@ -19,17 +19,21 @@ export async function create(req: Request, res: Response): Promise<void> {
 }
 
 export async function update(req: Request, res: Response): Promise<void> {
-  if (!(await faqs.findById(req.params.id))) throw httpError(404, "FAQ tidak ditemukan.");
+  if (!(await faqs.findById(req.params.id)))
+    throw httpError(404, "FAQ tidak ditemukan.");
   const b = req.body || {};
   const changes: Record<string, any> = {};
-  if (b.question !== undefined) changes.question = requiredText(b.question, "Pertanyaan", 500);
-  if (b.answer !== undefined) changes.answer = requiredText(b.answer, "Jawaban", 20000);
+  if (b.question !== undefined)
+    changes.question = requiredText(b.question, "Pertanyaan", 500);
+  if (b.answer !== undefined)
+    changes.answer = requiredText(b.answer, "Jawaban", 20000);
   await faqs.patch(req.params.id, changes);
   res.json(await faqs.findById(req.params.id));
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {
-  if (!(await faqs.findById(req.params.id))) throw httpError(404, "FAQ tidak ditemukan.");
+  if (!(await faqs.findById(req.params.id)))
+    throw httpError(404, "FAQ tidak ditemukan.");
   await faqs.remove(req.params.id);
   res.json({ message: "FAQ dihapus." });
 }

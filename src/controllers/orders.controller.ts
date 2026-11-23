@@ -7,9 +7,10 @@ import { httpError } from "../middleware/error";
 import { uploadedUrl } from "../utils/upload";
 import { notify, topengStatusText } from "../modules/notifications/notify.service";
 import { sweepPayments } from "../modules/notifications/sweeper";
-import { TOPENG_STATUS } from "../config/rules";
+import { TOPENG_STATUS, canCancelTopeng, needsRefund } from "../config/rules";
 import type { AuthedRequest } from "../types/auth";
-import { attachOrderReviews } from "./reviews.controller";
+import { attachOrderReviews, orderActions } from "./reviews.controller";
+import { readCancelInput } from "./common";
 
 // Pesanan topeng hanya dibayar lewat QRIS atau transfer (butuh bukti bayar).
 const VALID_PAYMENT_METHODS = ["qris", "transfer"];
@@ -139,7 +140,8 @@ export async function listMine(req: Request, res: Response): Promise<void> {
 
 // GET /api/topeng/orders/:orderId
 export async function getOne(req: Request, res: Response): Promise<void> {
-  res.json({ order: await findOrder(req, { adminAllowed: true }) });
+  const order = await findOrder(req, { adminAllowed: true });
+  res.json({ order: { ...order, ...orderActions(order) } });
 }
 
 // GET /api/topeng/orders/:orderId/qris
@@ -204,6 +206,44 @@ export async function payCash(_req: Request, _res: Response): Promise<void> {
   );
 }
 
+export async function cancel(req: Request, res: Response): Promise<void> {
+  const order = await findOrder(req);
+  if (order.status === "dibatalkan")
+    throw httpError(400, "Pesanan ini sudah dibatalkan.");
+  if (!canCancelTopeng(order))
+    throw httpError(
+      400,
+      "Pesanan sudah diproses sehingga tidak bisa dibatalkan. Hubungi admin sanggar bila ada kendala.",
+    );
+  const refund = needsRefund(order);
+  const { reason, refundAccount } = readCancelInput(req.body, { refund });
+  await orders.patch(order.id, {
+    status: "dibatalkan",
+    cancelReason: reason,
+    refundAccount,
+    cancelledAt: new Date().toISOString(),
+  });
+  await orders.addChat(order.id, {
+    from: "system",
+    text: `Pesanan dibatalkan oleh pembeli. Alasan: ${reason}`,
+  });
+  await notify(order.userId, {
+    type: "order",
+    title: "Pesanan dibatalkan",
+    body: refund
+      ? `Pesanan ${order.topengName} dibatalkan. Admin akan menghubungi kamu via Email/WhatsApp untuk pengembalian dana.`
+      : `Pesanan ${order.topengName} dibatalkan.`,
+    refId: String(order.id),
+    refType: "topeng",
+  });
+  res.json({
+    message: refund
+      ? "Pesanan dibatalkan. Admin akan menghubungi kamu untuk pengembalian dana."
+      : "Pesanan dibatalkan.",
+    status: "dibatalkan",
+  });
+}
+
 // GET /api/topeng/admin/orders   (admin)
 export async function listAll(_req: Request, res: Response): Promise<void> {
   await sweepPayments();
@@ -218,6 +258,8 @@ export async function updateStatus(req: Request, res: Response): Promise<void> {
     throw httpError(400, "Status tidak valid.");
   const order = await orders.findById(req.params.orderId);
   if (!order) throw httpError(404, "Pesanan tidak ditemukan.");
+  if (order.status === "dibatalkan" && order.cancelReason && status !== "dibatalkan")
+    throw httpError(409, "Pesanan ini sudah dibatalkan oleh pembeli, statusnya tidak bisa diubah lagi.");
 
   const changes: Record<string, any> = { status };
   const courier = String(req.body.courier ?? "")

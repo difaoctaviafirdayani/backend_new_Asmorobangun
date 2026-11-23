@@ -23,9 +23,12 @@ export const bookings = makeRepo({
     amount: "amount",
     proofFile: "proof_file",
     status: "status",
+    cancelReason: "cancel_reason",
+    refundAccount: "refund_account",
+    cancelledAt: "cancelled_at",
     createdAt: "created_at",
   },
-  dates: ["createdAt"],
+  dates: ["createdAt", "cancelledAt"],
   nums: ["amount"],
   order: "created_at DESC",
 });
@@ -52,9 +55,12 @@ const ordersBase = makeRepo({
     trackingNumber: "tracking_number",
     shippingJson: "shipping",
     status: "status",
+    cancelReason: "cancel_reason",
+    refundAccount: "refund_account",
+    cancelledAt: "cancelled_at",
     createdAt: "created_at",
   },
-  dates: ["createdAt"],
+  dates: ["createdAt", "cancelledAt"],
   nums: ["qty", "unitPrice", "total"],
   order: "created_at DESC",
 });
@@ -241,6 +247,12 @@ export async function init(): Promise<void> {
   await addColumnIfMissing("topeng_orders", "courier", "VARCHAR(80) NULL");
   await addColumnIfMissing("topeng_orders", "tracking_number", "VARCHAR(80) NULL");
   await addColumnIfMissing("topeng_orders", "shipping", "TEXT NULL");
+
+  for (const t of ["topeng_orders", "bookings"]) {
+    await addColumnIfMissing(t, "cancel_reason", "VARCHAR(300) NULL");
+    await addColumnIfMissing(t, "refund_account", "VARCHAR(120) NULL");
+    await addColumnIfMissing(t, "cancelled_at", "DATETIME(3) NULL");
+  }
 
   await migrateFromJson();
 }
