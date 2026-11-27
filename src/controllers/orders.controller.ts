@@ -210,7 +210,7 @@ export async function cancel(req: Request, res: Response): Promise<void> {
   const order = await findOrder(req);
   if (order.status === "dibatalkan")
     throw httpError(400, "Pesanan ini sudah dibatalkan.");
-  if (!canCancelTopeng(order))
+  if (!canCancelTopeng(order as { status: string }))
     throw httpError(
       400,
       "Pesanan sudah diproses sehingga tidak bisa dibatalkan. Hubungi admin sanggar bila ada kendala.",

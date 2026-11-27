@@ -59,15 +59,9 @@ export async function initMysql(): Promise<void> {
     password: DB.PASSWORD,
     database: DB.NAME,
     waitForConnections: true,
-<<<<<<< Updated upstream
     connectionLimit: poolSize,
     maxIdle: poolSize,
     idleTimeout: 30000, // buang koneksi idle sebelum server memutusnya (TiDB: idle 340 detik)
-=======
-    connectionLimit: 10, // dinaikkan agar request Flutter yang paralel tidak berebut
-    maxIdle: 10,
-    idleTimeout: 30000, // buang koneksi idle sebelum MySQL memutusnya
->>>>>>> Stashed changes
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
     connectTimeout: 15000,

@@ -236,7 +236,7 @@ export async function cancel(req: Request, res: Response): Promise<void> {
   const booking = await findOwnedBooking(req);
   if (booking.status === "dibatalkan")
     throw httpError(400, "Pendaftaran ini sudah dibatalkan.");
-  if (!canCancelBooking(booking)) {
+  if (!canCancelBooking(booking as { status: string; date?: unknown })) {
     const left = daysUntil(booking.date);
     throw httpError(
       400,
